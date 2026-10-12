@@ -1,0 +1,59 @@
+<!doctype html>
+<html>
+<head>
+<meta charset=utf-8>
+<title>Remote Manager</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#070b12;color:#e8edf7;font-family:Arial}
+.side{position:fixed;width:230px;height:100vh;background:#101827;padding:22px}
+.main{margin-left:230px;padding:30px}
+.menu{padding:12px 0}
+.stats{display:flex;gap:16px}
+.box,.device{background:#111b2a;border:1px solid #263953;border-radius:10px;padding:20px}
+.box{width:120px;text-align:center}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:20px}
+.device button{background:#2563eb;color:white;border:0;padding:8px 15px;border-radius:5px}
+</style>
+</head>
+<body>
+<div class=side>
+<h2>Remote Manager</h2>
+<div class=menu>控制台</div>
+<div class=menu>设备管理</div>
+<div class=menu>数据管理</div>
+<div class=menu>应用管理</div>
+<div class=menu>日志</div>
+<div class=menu>系统设置</div>
+</div>
+<div class=main>
+<h1>设备控制台</h1>
+<div class=stats>
+<div class=box>总设备<br><b id=total>0</b></div>
+<div class=box>在线<br><b id=online>0</b></div>
+<div class=box>离线<br><b id=offline>0</b></div>
+<div class=box>异常<br><b id=error>0</b></div>
+</div>
+<h2>设备列表</h2>
+<div id=list class=grid></div>
+</div>
+<script>
+fetch('/api/devices').then(r=>r.json()).then(d=>{
+ total.innerText=d.length;
+ online.innerText=d.filter(x=>x.status==='online'||x.status==='在线').length;
+ offline.innerText=d.filter(x=>x.status==='offline'||x.status==='离线').length;
+ error.innerText=d.filter(x=>x.status==='error'||x.status==='异常').length;
+ list.innerHTML=d.map(x=>`
+ <div class=device>
+ 📱 ${x.device_name||''}<br>
+ ${x.status||''}<br>
+ ${x.model||''}<br>
+ Android ${x.android_version||''}<br>
+ 电量 ${x.battery||0}%<br><br>
+ <button>控制</button>
+ <button>查看</button>
+ </div>`).join('');
+});
+</script>
+</body>
+</html>
