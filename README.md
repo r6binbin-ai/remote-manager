@@ -1,29 +1,38 @@
-# 黑鹰安卓远程 Web V5.1 — Pixel 3 真机接入
+# 黑鹰安卓远程 Web V5.2 — 真实设备详情与管理
 
-在已部署的 Web V5.0 基础上直接更新。外观不变，2 台演示记录不删除，不需要再执行 SQL。
+**升级基线：** Web V5.1（GitHub 最新提交 `05648f3`）+ Android Agent V1.1，保持原版控制台布局与演示/真实模式隔离。
 
-## 功能
-- 手机端首次打开弹出明确授权窗口，点击「同意并连接」才注册。
-- 手机没有配对码，也不需要管理员审核。
-- 使用 `BE_ENROLL_KEY`（>=32字符）限制谁能从私有 APK 注册；注册后服务器下发每台设备独立令牌。
-- 每40秒认证心跳，120秒无心跳标记离线。手机端可主动断开并撤销绑定、后台也可撤销。
-- 继续使用既有数据库 `be_real_devices`、`be_audit_log`；无需修改 SQL 或 Supabase。
+## 新增可用功能
 
-## 部署（先服务器后 APK）
-1. 在 Render / Environment 新增 `BE_ENROLL_KEY`（建议64位随机十六进制），不要改其他环境变量。
-2. 上传本 ZIP 内 `server.js`、`package.json`、`README.md`、`public` 到现有 GitHub 仓库根目录并 Commit；等 Render Live。
-3. Android Studio 安装 Agent 覆盖包后，在仅本机的 `AgentConfig.kt` 中将 `INSTALL_KEY` 设置为同一个 `BE_ENROLL_KEY`，编译 APK。
-4. 安装后点击系统「打开」，在首次授权页面点击「同意并连接」。
-5. 网站切换「真实设备」并刷新，确认手机心跳；断开网络大约120秒后转离线。
+- 真实手机详情在服务器端单独查询（`GET /api/devices/:id/overview`），展示注册时间、设备型号、Android、电量、网络、最后有效心跳、在线/离线、分组与备注。
+- 设备名称、分组、备注保存到 Supabase（`PATCH /api/devices/:id/manage`）；名称存入现有 `be_real_devices.device_name`，分组/备注存入 `be_device_meta`，无需新 SQL。
+- 单设备操作记录：从已有 `be_audit_log` 按设备 ID 读取最近20项（注册、管理修改、授权撤销等）；心跳不逐条保存日志。
+- 真实设备详情与列表在页面可见时每20秒自动刷新；手动刷新按钮也实际可用。
+- 原有设备撤销按钮保留；撤销将使手机现有凭证无效，是实际操作，勿在正常测试时随意点击。
+- 旧的手机注册、授权、心跳及断线恢复接口完全保留，**不需要重新编译或安装 APK**。
+- 原先只有占位提示的屏幕共享、远程控制、AI分析等依旧明确标示为未接入，不承诺可用。隐蔽密码/支付/通信采集功能不提供。
 
-## 已有 API
-- `POST /api/agent/enroll`：首次授权注册，需 `X-BE-Install-Key` 私有安装密钥。
-- `POST /api/agent/heartbeat`：设备令牌认证后更新电量、网络、最后心跳。
-- `POST /api/agent/disconnect`：手机端主动断开并撤销该设备凭证，设备立即从真实列表移除。
-- `POST /api/devices/:id/revoke`：管理员撤销客户端令牌。
+## 部署（一次性更新）
 
-## 安全边界
-- 私有安装凭证嵌入APK存在被提取的可能，适用于**受控分发的试验版**，不应公开分发。若泄露要在 Render 更换 `BE_ENROLL_KEY`，重新构建新 APK。安装密钥不能访问管理 API。
-- 安装授权无法由 APK 在 Android 系统安装程序内弹出；需安装完成点击系统「打开」后显示。拒绝授权不会注册。
-- 不获取通讯录、短信、键盘、支付信息、摄像头或屏幕，不执行远程控制。
-- Android 15+ 对 `dataSync` 类型前台服务有运行时长限制；长期全天在线需要后续引入符合 Android 平台约束的连接方案。本版先在 Pixel 3 验证。
+1. 确认 GitHub 仓库 `r6binbin-ai/remote-manager` 目前连接 Render 服务。
+2. 解压本包，把根目录的 `public/`、`server.js`、`package.json`、`README.md` 拖到 GitHub 仓库**根目录**并提交。上传时 `public/` 保持文件夹结构。
+3. Render 自动部署。确认最新提交状态 `Live` 后，打开 `https://remote-manager.onrender.com` 并 Ctrl+F5。
+4. 切到「真实设备」，打开 Pixel 3 → 详情右侧「设备信息」。修改名称/备注/分组并保存；点击「操作记录」验证审计记录。不要测试「撤销授权」，除非确实要断开设备。
+
+## 环境变量和数据库
+
+**不新增环境变量，不需要运行 SQL，不要修改 Android 客户端**。继续保留 Render 上 `ADMIN_USERNAME`、`ADMIN_PASSWORD`、`SESSION_SECRET`、`SUPABASE_URL`、`SUPABASE_KEY`、`SUPABASE_SERVER_KEY`、`BE_ENROLL_KEY`。
+
+后端采用已有的 `be_real_devices`、`be_device_meta`、`be_audit_log` 表；读演示设备优先使用服务端管理密钥，避免直接依赖匿名读取。
+
+## 已完成的检验范围
+
+- 服务器和浏览器脚本 Node 语法检查通过。
+- 在本地 Chromium 使用**模拟的 Pixel 3 数据**验证：真实模式 → 设备详情 → 名称/分组/备注提交 → 顶部显示更新 → 操作记录切换 → 未接入模块仍显示说明；没有 JavaScript 异常。
+- **尚未**使用你的在线 Render / Supabase 凭证做端到端测试，也没有直接更新你的线上仓库。部署后须在 Pixel 3 的真实记录上复测。
+
+## 安全注意
+
+- 客户端安装凭证嵌入私有 APK，不可认为能抵挡逆向提取。只用于自有设备的受控分发，不要公开上传 APK。
+- 以前建立的 `public.users` / `public.devices` 如果仍对匿名用户开放，需要单独审查和关闭权限；本次部署不擅自修改旧表，以免中断现有功能。
+- 永远不要向聊天发送 Render / Supabase 密钥，或者提交到公开 GitHub。

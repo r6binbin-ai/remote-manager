@@ -1,5 +1,5 @@
 'use strict';
-/** 黑鹰安卓远程 Web V5.1: consent-based install enrollment, no pair code. */
+/** 黑鹰安卓远程 Web V5.2: real device management on top of consent-based enrollment. */
 const express = require('express');
 const crypto = require('crypto');
 const path = require('path');
@@ -47,7 +47,7 @@ async function audit(action,target='',detail=''){
  if(!managedDb)return;
  try{const {error}=await managedDb.from('be_audit_log').insert({actor:username,action,target,detail:noteValue(detail)});if(error)console.error('[audit]',error.message);}catch(e){console.error('[audit]',e.message);}
 }
-app.get('/api/health',(_req,res)=>res.json({online:true,version:'5.1.0',adminConfigured:configured,databaseConfigured:!!db,managedConfigured:!!managedDb,enrollmentConfigured:installKey.length>=32}));
+app.get('/api/health',(_req,res)=>res.json({online:true,version:'5.2.0',adminConfigured:configured,databaseConfigured:!!db,managedConfigured:!!managedDb,enrollmentConfigured:installKey.length>=32}));
 app.get('/login',(_req,res)=>res.sendFile(path.join(__dirname,'public/login.html')));
 app.post('/api/login',(req,res)=>{
  if(!configured)return res.status(503).json({error:'请先配置 ADMIN_PASSWORD 和 SESSION_SECRET'});
@@ -70,7 +70,7 @@ async function readMeta(keys){
 const fields='id,created_at,device_name,device_id,model,android_version,battery,network,status,country,ip,last_online';
 app.get('/api/devices',mustAuth,async(req,res)=>{
  const mode=req.query.mode==='real'?'real':'demo';
- if(mode==='demo'&&!db)return res.status(503).json({error:'Supabase尚未连接'});
+ if(mode==='demo'&&!managedDb&&!db)return res.status(503).json({error:'Supabase尚未连接'});
  if(mode==='real'&&!ready(res))return;
  try{
   if(mode==='real'){
@@ -79,7 +79,7 @@ app.get('/api/devices',mustAuth,async(req,res)=>{
    const keys=(data||[]).map(r=>'real:'+r.id),meta=await readMeta(keys);
    return res.json((data||[]).map(r=>({id:r.id,device_id:r.id,device_name:r.device_name,model:r.model,android_version:r.android_version,battery:r.battery,network:r.network,country:r.country,ip:'',last_online:r.last_seen,registered_at:r.registered_at,status:r.last_seen&&Date.now()-new Date(r.last_seen).getTime()<=HEARTBEAT_MS?'online':'offline',...meta['real:'+r.id]})));
   }
-  const {data,error}=await db.from('devices').select(fields).order('id',{ascending:false}).limit(500);
+  const {data,error}=await (managedDb||db).from('devices').select(fields).order('id',{ascending:false}).limit(500);
   if(error)throw error;
   const keys=(data||[]).map(r=>'demo:'+r.id),meta=await readMeta(keys);
   return res.json((data||[]).map(r=>({...r,...meta['demo:'+r.id],isDemo:true})));
@@ -105,11 +105,66 @@ app.patch('/api/devices/:id/meta',mustAuth,mustOrigin,async(req,res)=>{
   res.json({ok:true,group_name,note});
  }catch(e){failure(res,e,'保存设备设置失败');}
 });
+// V5.2 - authenticated, read-only detail for a single enrolled device.
+// No new SQL columns or Android client changes are required.
+app.get('/api/devices/:id/overview',mustAuth,async(req,res)=>{
+ if(!ready(res))return;
+ const id=value(req.params.id,80);
+ if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))return res.status(400).json({error:'设备编号无效'});
+ try{
+  const {data,error}=await managedDb.from('be_real_devices')
+    .select('id,device_name,model,android_version,battery,network,country,last_seen,registered_at,revoked_at')
+    .eq('id',id).is('revoked_at',null).maybeSingle();
+  if(error)throw error;
+  if(!data)return res.status(404).json({error:'设备不存在或授权已撤销'});
+  const meta=await readMeta(['real:'+id]);
+  const {data:events,error:eventsError}=await managedDb.from('be_audit_log')
+    .select('id,actor,action,target,detail,created_at')
+    .in('target',[id,'real:'+id]).order('created_at',{ascending:false}).limit(20);
+  if(eventsError)throw eventsError;
+  const alive=!!(data.last_seen&&Date.now()-new Date(data.last_seen).getTime()<=HEARTBEAT_MS);
+  res.json({device:{...data,device_id:data.id,status:alive?'online':'offline',
+    last_online:data.last_seen,...(meta['real:'+id]||{note:'',group_name:'未分组'})},
+    server_time:new Date().toISOString(),heartbeat_timeout_seconds:HEARTBEAT_MS/1000,
+    capabilities:{screen_share:false,remote_control:false,device_info:true},
+    events:events||[]});
+ }catch(e){failure(res,e,'设备详情读取失败');}
+});
+// Persist a device's display name, note and group. Never change agent credentials.
+app.patch('/api/devices/:id/manage',mustAuth,mustOrigin,async(req,res)=>{
+ if(!ready(res))return;
+ const id=value(req.params.id,80);
+ if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))return res.status(400).json({error:'设备编号无效'});
+ if(typeof req.body?.device_name!=='string'||typeof req.body?.group_name!=='string'||typeof req.body?.note!=='string')
+  return res.status(400).json({error:'设备名称、分组和备注必须是文本'});
+ const device_name=value(req.body.device_name,80),group_name=value(req.body.group_name,45)||'未分组',note=noteValue(req.body.note);
+ if(device_name.length<2||/[\x00-\x1f\x7f]/.test(device_name)||/[\x00-\x1f\x7f]/.test(group_name))
+  return res.status(400).json({error:'设备名称至少2个字符，且不能含控制字符'});
+ try{
+  const {data:old,error:fetchError}=await managedDb.from('be_real_devices')
+    .select('device_name').eq('id',id).is('revoked_at',null).maybeSingle();
+  if(fetchError)throw fetchError;
+  if(!old)return res.status(404).json({error:'设备不存在或授权已撤销'});
+  if(old.device_name!==device_name){
+    const {error}=await managedDb.from('be_real_devices').update({device_name}).eq('id',id).is('revoked_at',null);
+    if(error)throw error;
+  }
+  const {error:metaError}=await managedDb.from('be_device_meta')
+    .upsert({device_key:'real:'+id,group_name,note,updated_at:new Date().toISOString()},{onConflict:'device_key'});
+  if(metaError){
+    // Best effort rollback of the display name in case the metadata table fails.
+    if(old.device_name!==device_name)await managedDb.from('be_real_devices').update({device_name:old.device_name}).eq('id',id);
+    throw metaError;
+  }
+  await audit('device_management_update','real:'+id,'修改设备名称、分组及备注');
+  res.json({ok:true,device_name,group_name,note});
+ }catch(e){failure(res,e,'设备管理信息保存失败');}
+});
 app.get('/api/audit',mustAuth,async(req,res)=>{
  if(!ready(res))return;
  try{const {data,error}=await managedDb.from('be_audit_log').select('id,actor,action,target,detail,created_at').order('created_at',{ascending:false}).limit(120);if(error)throw error;res.json(data||[]);}catch(e){failure(res,e,'审计日志读取失败');}
 });
-app.get('/api/admin/status',mustAuth,(req,res)=>res.json({version:'5.1.0',username,database:!!db,managed:!!managedDb,enrollmentConfigured:installKey.length>=32,heartbeatSeconds:HEARTBEAT_MS/1000,sessionHours:TTL/3600000}));
+app.get('/api/admin/status',mustAuth,(req,res)=>res.json({version:'5.2.0',username,database:!!db,managed:!!managedDb,enrollmentConfigured:installKey.length>=32,heartbeatSeconds:HEARTBEAT_MS/1000,sessionHours:TTL/3600000}));
 // Android agent enrollment: explicit on-device consent + private installer credential.
 // Note: the installation credential is embedded in privately distributed APKs and can
 // be extracted by a determined attacker. Treat it as pilot provisioning, rotate if leaked.
@@ -165,4 +220,4 @@ app.get('/app.js',mustAuth,(_req,res)=>res.type('application/javascript').sendFi
 app.get('/',(req,res)=>{if(!authorized(req))return res.redirect('/login');res.sendFile(path.join(__dirname,'public/index.html'));});
 app.get('/index.html',(_req,res)=>res.redirect('/'));
 app.use((_req,res)=>res.status(404).send('Not found'));
-app.listen(process.env.PORT||3000,'0.0.0.0',()=>console.log('Black Eagle remote manager V5.1 started'));
+app.listen(process.env.PORT||3000,'0.0.0.0',()=>console.log('Black Eagle remote manager V5.2 started'));

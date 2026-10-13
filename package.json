@@ -1,6 +1,6 @@
 {
   "name": "black-eagle-remote-manager",
-  "version": "5.0.0",
+  "version": "5.2.0",
   "private": true,
   "scripts": {
     "start": "node server.js"
