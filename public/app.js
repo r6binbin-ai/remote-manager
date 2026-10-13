@@ -1,5 +1,5 @@
 'use strict';
-/* Black Eagle V5.2: preserve controller layout, add live enrolled-device details/management. */
+/* Black Eagle V5.3: preserve controller layout, add live enrolled-device details/management. */
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const showDate=t=>{if(!t)return '从未上报';let d=new Date(t);return Number.isNaN(d.getTime())?'日期未知':d.toLocaleString('zh-CN',{hour12:false});};
@@ -31,13 +31,13 @@ function render(){
  $('cards').innerHTML=slice.map(d=>`<article class="card ${d.online?'online-first':''} ${d.demo?'demo-card':''}" tabindex="0" role="button" data-id="${esc(d.id)}" title="查看设备详情">
  <div class="line-top"><div class="deviceicon">▯</div><div class="devicehead"><div class="title"><em style="background:${d.online?'#08da80':'#697282'}"></em><span class="device-name">${esc(d.name)}</span></div><div class="id">${esc(d.uid)}</div></div><div class="icons">▣ ♢ ⚑ ⇄ ⊘ ▤</div></div>
  <div class="tags"><span class="tag">${esc(d.network)}</span><span class="tag sim">${d.demo?'演示':'已注册'}</span><span class="tag access" title="无障碍授权状态未上报">权限未上报</span><span class="tag screen">${d.online?(d.demo?'模拟在线':'在线'):'离线'}</span><span class="battery ${d.battery!==null&&d.battery<35?'low':''}">▰ ${d.battery===null?'—':d.battery+'%'}</span></div>
- <div class="details">${detailRow('设备分组:',d.group)}${detailRow('系统版本:','Android '+d.android)}${detailRow('IP/地区:',d.ip+(d.country?' · '+d.country:''),'ip')}${detailRow('设备归属:',d.demo?'演示数据库':'已授权注册','owner')}${detailRow('连接类型:',d.demo?'数据库模拟状态':'认证心跳','faint')}${detailRow('屏幕共享:','尚未接入','faint')}${detailRow('远程控制:','尚未接入','faint')}${detailRow('设备型号:',d.model,'faint')}${detailRow('创建时间:',d.raw.registered_at?showDate(d.raw.registered_at):'演示记录','faint')}${detailRow('最后心跳:',d.demo?'无真实心跳':showDate(d.last))}${detailRow('备注:',d.note||'—','remark')}</div>
+ <div class="details">${detailRow('设备分组:',d.group)}${detailRow('系统版本:','Android '+d.android)}${detailRow('IP/地区:',d.ip+(d.country?' · '+d.country:''),'ip')}${detailRow('设备归属:',d.demo?'演示数据库':'已授权注册','owner')}${detailRow('连接类型:',d.demo?'数据库模拟状态':'认证心跳','faint')}${detailRow('屏幕共享:','需手机端单独授权','faint')}${detailRow('远程控制:','尚未接入','faint')}${detailRow('设备型号:',d.model,'faint')}${detailRow('创建时间:',d.raw.registered_at?showDate(d.raw.registered_at):'演示记录','faint')}${detailRow('最后心跳:',d.demo?'无真实心跳':showDate(d.last))}${detailRow('备注:',d.note||'—','remark')}</div>
  <div class="actionbar"><button data-action="detail" data-id="${esc(d.id)}">查看</button><button data-action="edit" data-id="${esc(d.id)}" ${d.layoutOnly?'disabled title="布局预览不可编辑"':''}>备注/分组</button></div></article>`).join('');
  if(!slice.length)$('cards').innerHTML=`<div class="empty-state"><b>${mode==='real'?'当前没有已授权注册的真实设备':'暂无匹配的演示记录'}</b>${mode==='real'?'真实设备必须安装客户端并主动授权注册后，才会出现在这里。':'尝试修改搜索条件，或点击刷新。'}</div>`;
  $('cards').querySelectorAll('.card').forEach(c=>{c.onclick=e=>{const d=source.find(x=>x.id===c.dataset.id);if(!d)return;const action=e.target.closest('[data-action]')?.dataset.action;if(action==='edit'){edit(d);return;}openDetail(d);};c.onkeydown=e=>{if(e.key==='Enter'&&!e.target.closest('button')){const d=source.find(x=>x.id===c.dataset.id);if(d)openDetail(d);}};});
 }
 function setModeUI(){for(const name of ['demo','real']){$('mode-'+name).classList.toggle('active',mode===name);$('mode-'+name).classList.toggle('real',name==='real');}const tag=$('mode-tag');tag.textContent=mode==='demo'?'演示数据 · 非真实连接':'真实设备 · 心跳判定';tag.classList.toggle('real',mode==='real');$('preview').hidden=mode==='real';$('add-pair').hidden=mode==='demo';$('preview').textContent=layoutPreview?'返回演示数据':'◈ 布局预览';}
-function openList(){activeModule='设备';activeDevice=null;view('listing');highlight('设备');}
+function openList(){clearScreenPreview();activeModule='设备';activeDevice=null;view('listing');highlight('设备');}
 function view(section){$('listing').style.display=section==='listing'?'block':'none';$('detail').style.display=section==='detail'?'block':'none';$('module').style.display=section==='module'?'block':'none';$('sidebar').style.display=section==='detail'?'none':'flex';$('main').style.marginLeft=section==='detail'?'0':'140px';$('main').style.padding=section==='detail'?'6px 12px':'0 7px';}
 function highlight(name){$('sidebar').querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.module===name));}
 function updateDetailHeader(d){
@@ -68,8 +68,8 @@ function renderDevicePanel(){
     ${infoTile('授权状态',d.demo?'演示设备（未授权）':'已授权注册',!d.demo?'good':'dim')}
     ${infoTile('注册时间',d.demo?'演示数据库记录':showDate(d.raw.registered_at))}
     ${infoTile('所属分组',d.group)}${infoTile('设备备注',d.note||'—')}
-    ${infoTile('屏幕共享','尚未接入')}${infoTile('远程控制','尚未接入')}
-  </div><div class="device-mgmt-row"><button id="panel-manage" ${d.layoutOnly?'disabled':''}>编辑名称 / 分组 / 备注</button><button id="panel-reload">刷新设备状态</button>${!d.demo?'<button id="panel-revoke" class="warn">撤销设备授权</button>':''}</div><p class="device-mgmt-note">电量、网络和在线状态来自手机客户端有效心跳；未上报的项目不作推断。此页面不包含屏幕共享或隐蔽数据采集。</p>`;
+    ${infoTile('屏幕共享','需手机端单独授权')}${infoTile('远程控制','尚未接入')}
+  </div><div class="device-mgmt-row"><button id="panel-manage" ${d.layoutOnly?'disabled':''}>编辑名称 / 分组 / 备注</button><button id="panel-reload">刷新设备状态</button>${!d.demo?'<button id="panel-revoke" class="warn">撤销设备授权</button>':''}</div><p class="device-mgmt-note">设备在线状态来自真实心跳。屏幕画面仅在手机端单独授权时传输；服务器不会储存录屏或启用隐蔽采集。</p>`;
   $('panel-manage').onclick=()=>edit(d);
   $('panel-reload').onclick=()=>{if(d.demo)load().then(()=>{const nd=source.find(x=>x.id===d.id);if(nd){activeDevice=nd;updateDetailHeader(nd);renderDevicePanel();}});else refreshOverview();};
   if(!d.demo)$('panel-revoke').onclick=revoke;
@@ -103,15 +103,57 @@ async function refreshOverview(quiet=false){
  }catch(e){if(!quiet)toast('刷新失败：'+e.message);else console.warn('设备详情刷新失败',e.message);}
  finally{detailFetching=false;}
 }
-function openDetail(d){activeDevice=d;deviceEvents=[];view('detail');updateDetailHeader(d);
- $('detail').querySelectorAll('.screen').forEach((el,i)=>el.textContent=['未接入已授权的屏幕共享','当前无实时画面','当前无ADB画面'][i]);
+
+// Live JPEG preview from a phone that started Android MediaProjection itself.
+// The admin website cannot start MediaProjection remotely. No frames are recorded.
+let screenPreviewUrl=null, screenLastFrame=0, screenFetchBusy=false, screenViewing=true;
+function clearScreenPreview(){
+  if(screenPreviewUrl){URL.revokeObjectURL(screenPreviewUrl);screenPreviewUrl=null;}
+  screenLastFrame=0;screenViewing=true;
+  const image=$('be-live-image'),hint=$('be-live-hint'),badge=$('be-live-badge'),stop=$('be-screen-stopview');
+  if(image){image.removeAttribute('src');image.style.display='none';}
+  if(hint){hint.textContent='请先在手机上的黑鹰客户端点击“开始屏幕共享”，并同意 Android 系统授权';hint.style.display='block';}
+  if(badge)badge.style.display='none';if(stop)stop.style.display='none';
+}
+async function pollScreenPreview(){
+  const d=activeDevice;
+  if(screenFetchBusy||!screenViewing||!d||d.demo||mode!=='real'||document.visibilityState!=='visible'||$('detail').style.display!=='block')return;
+  screenFetchBusy=true;
+  const id=d.id;
+  try{
+    const response=await fetch('/api/devices/'+encodeURIComponent(id)+'/screen/frame',{credentials:'same-origin',cache:'no-store'});
+    if(!activeDevice||activeDevice.id!==id||mode!=='real')return;
+    if(response.status===401){location.replace('/login');return;}
+    if(response.status===204){
+      if(Date.now()-screenLastFrame>8500){
+        if(screenPreviewUrl){URL.revokeObjectURL(screenPreviewUrl);screenPreviewUrl=null;}
+        $('be-live-image').style.display='none';$('be-live-badge').style.display='none';$('be-screen-stopview').style.display='none';
+        $('be-live-hint').style.display='block';
+        $('be-live-hint').textContent='当前没有有效共享画面。请在手机端手动开启屏幕共享';
+      }
+      return;
+    }
+    if(!response.ok||!(response.headers.get('content-type')||'').includes('image/jpeg'))return;
+    const blob=await response.blob();
+    if(!activeDevice||activeDevice.id!==id||mode!=='real'||!screenViewing)return;
+    const newUrl=URL.createObjectURL(blob);const old=screenPreviewUrl;screenPreviewUrl=newUrl;
+    $('be-live-image').src=newUrl;$('be-live-image').style.display='block';
+    $('be-live-hint').style.display='none';$('be-live-badge').style.display='block';$('be-screen-stopview').style.display='block';
+    screenLastFrame=Date.now();if(old)URL.revokeObjectURL(old);
+  }catch(err){console.warn('屏幕预览暂时中断',err.message);}
+  finally{screenFetchBusy=false;}
+}
+
+function openDetail(d){clearScreenPreview();activeDevice=d;deviceEvents=[];view('detail');updateDetailHeader(d);
+ $('detail').querySelectorAll('.screen')[1].textContent='当前无实时控制画面';
+ $('detail').querySelectorAll('.screen')[2].textContent='当前无ADB画面';
  selectPanel('设备信息');if(!d.demo)void refreshOverview(true);
 }
 async function load(){setModeUI();$('source-label').textContent='正在读取设备信息…';if(layoutPreview&&mode==='demo'){source=previewData();updateFilters();render();$('source-label').textContent='布局预览：41台虚构设备（不计入真实设备）';return;}
  try{const data=await json('/api/devices?mode='+mode);source=data.map(normalize);page=1;updateFilters();render();$('source-label').textContent=mode==='demo'?'演示模式 · 当前 '+source.length+' 条数据库测试记录，不代表已连接手机':'真实模式 · 仅显示已授权注册设备，在线状态依据120秒内有效心跳';}
  catch(e){source=[];updateFilters();render();$('source-label').textContent='设备读取失败';$('cards').innerHTML=`<div class="empty-state"><b>设备读取失败</b>${esc(e.message)}</div>`;}
 }
-async function switchMode(next){if(next===mode)return;mode=next;layoutPreview=false;sessionStorage.setItem('be_mode',mode);$('search').value='';$('status-filter').value='all';page=1;openList();await load();}
+async function switchMode(next){if(next===mode)return;clearScreenPreview();mode=next;layoutPreview=false;sessionStorage.setItem('be_mode',mode);$('search').value='';$('status-filter').value='all';page=1;openList();await load();}
 function edit(d){if(d.layoutOnly){toast('布局预览不能修改数据库');return;}
  activeDevice=d;$('editing-label').textContent=d.name+' · '+(d.demo?'演示记录':'真实设备');
  $('meta-name').value=d.name;$('meta-name').disabled=d.demo;
@@ -186,3 +228,13 @@ function init(){
  },20000);
 }
 document.addEventListener('DOMContentLoaded',init);
+
+// Poll only while a real enrolled-device detail is open and foregrounded.
+setInterval(()=>{void pollScreenPreview();},1800);
+$('be-screen-stopview').onclick=()=>{
+  screenViewing=false;
+  if(screenPreviewUrl){URL.revokeObjectURL(screenPreviewUrl);screenPreviewUrl=null;}
+  $('be-live-image').removeAttribute('src');$('be-live-image').style.display='none';
+  $('be-live-badge').style.display='none';$('be-screen-stopview').style.display='none';
+  $('be-live-hint').style.display='block';$('be-live-hint').textContent='已停止在浏览器观看；请在手机端点击“停止屏幕共享”结束上传。重新进入设备详情可再次查看。';
+};
