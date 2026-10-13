@@ -1,5 +1,5 @@
 'use strict';
-/* Black Eagle V5.3: preserve controller layout, add live enrolled-device details/management. */
+/* Black Eagle V5.3.1: preserve controller layout, add live enrolled-device details/management. */
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const showDate=t=>{if(!t)return '从未上报';let d=new Date(t);return Number.isNaN(d.getTime())?'日期未知':d.toLocaleString('zh-CN',{hour12:false});};
@@ -107,41 +107,92 @@ async function refreshOverview(quiet=false){
 // Live JPEG preview from a phone that started Android MediaProjection itself.
 // The admin website cannot start MediaProjection remotely. No frames are recorded.
 let screenPreviewUrl=null, screenLastFrame=0, screenFetchBusy=false, screenViewing=true;
+let screenRequestCount=0, screenReceivedCount=0, screenRequestTime=0;
+// Repair/mount the live-view DOM even when a browser loaded an older page layout.
+function ensureLiveScreen(){
+ const panel=$('detail')?.querySelector('.screens');
+ if(!panel)return null;
+ const first=panel.querySelector('.screen');
+ if(!first)return null;
+ first.classList.add('live-screen');
+ if(!$('be-live-image')){
+  first.textContent='';
+  const im=document.createElement('img');im.id='be-live-image';im.alt='手机端已授权的实时屏幕画面';im.style.display='none';first.appendChild(im);
+  const hint=document.createElement('div');hint.id='be-live-hint';first.appendChild(hint);
+  const badge=document.createElement('div');badge.id='be-live-badge';badge.textContent='● 手机正在共享';first.appendChild(badge);
+  const stop=document.createElement('button');stop.id='be-screen-stopview';stop.type='button';stop.textContent='停止观看';first.appendChild(stop);
+ }
+ let diag=$('be-screen-diag');
+ if(!diag){diag=document.createElement('div');diag.id='be-screen-diag';diag.setAttribute('role','status');first.appendChild(diag);}
+ const stop=$('be-screen-stopview');
+ if(stop&&!stop.dataset.beBound){stop.dataset.beBound='1';stop.onclick=()=>{
+    screenViewing=false;
+    if(screenPreviewUrl){URL.revokeObjectURL(screenPreviewUrl);screenPreviewUrl=null;}
+    $('be-live-image').removeAttribute('src');$('be-live-image').style.display='none';
+    $('be-live-badge').style.display='none';stop.style.display='none';
+    $('be-live-hint').style.display='block';$('be-live-hint').textContent='已停止在网页观看。手机端仍可能正在共享；请在手机上点击“停止屏幕共享”结束上传。重新进入详情页可再次查看。';
+    setScreenDiag('本页已停止观看');
+  };}
+ return first;
+}
+function setScreenDiag(message){const d=$('be-screen-diag');if(d)d.textContent=String(message);}
 function clearScreenPreview(){
-  if(screenPreviewUrl){URL.revokeObjectURL(screenPreviewUrl);screenPreviewUrl=null;}
-  screenLastFrame=0;screenViewing=true;
-  const image=$('be-live-image'),hint=$('be-live-hint'),badge=$('be-live-badge'),stop=$('be-screen-stopview');
-  if(image){image.removeAttribute('src');image.style.display='none';}
-  if(hint){hint.textContent='请先在手机上的黑鹰客户端点击“开始屏幕共享”，并同意 Android 系统授权';hint.style.display='block';}
-  if(badge)badge.style.display='none';if(stop)stop.style.display='none';
+ ensureLiveScreen();
+ if(screenPreviewUrl){URL.revokeObjectURL(screenPreviewUrl);screenPreviewUrl=null;}
+ screenLastFrame=0;screenViewing=true;screenRequestCount=0;screenReceivedCount=0;
+ const image=$('be-live-image'),hint=$('be-live-hint'),badge=$('be-live-badge'),stop=$('be-screen-stopview');
+ if(image){image.removeAttribute('src');image.style.display='none';}
+ if(hint){hint.textContent='手机端允许系统录屏后，本窗口应显示真实画面';hint.style.display='block';}
+ if(badge)badge.style.display='none';if(stop)stop.style.display='none';
+ setScreenDiag('画面连接：等待首次请求');
 }
 async function pollScreenPreview(){
-  const d=activeDevice;
-  if(screenFetchBusy||!screenViewing||!d||d.demo||mode!=='real'||document.visibilityState!=='visible'||$('detail').style.display!=='block')return;
-  screenFetchBusy=true;
-  const id=d.id;
-  try{
-    const response=await fetch('/api/devices/'+encodeURIComponent(id)+'/screen/frame',{credentials:'same-origin',cache:'no-store'});
-    if(!activeDevice||activeDevice.id!==id||mode!=='real')return;
-    if(response.status===401){location.replace('/login');return;}
-    if(response.status===204){
-      if(Date.now()-screenLastFrame>8500){
-        if(screenPreviewUrl){URL.revokeObjectURL(screenPreviewUrl);screenPreviewUrl=null;}
-        $('be-live-image').style.display='none';$('be-live-badge').style.display='none';$('be-screen-stopview').style.display='none';
-        $('be-live-hint').style.display='block';
-        $('be-live-hint').textContent='当前没有有效共享画面。请在手机端手动开启屏幕共享';
-      }
-      return;
-    }
-    if(!response.ok||!(response.headers.get('content-type')||'').includes('image/jpeg'))return;
-    const blob=await response.blob();
-    if(!activeDevice||activeDevice.id!==id||mode!=='real'||!screenViewing)return;
-    const newUrl=URL.createObjectURL(blob);const old=screenPreviewUrl;screenPreviewUrl=newUrl;
-    $('be-live-image').src=newUrl;$('be-live-image').style.display='block';
-    $('be-live-hint').style.display='none';$('be-live-badge').style.display='block';$('be-screen-stopview').style.display='block';
-    screenLastFrame=Date.now();if(old)URL.revokeObjectURL(old);
-  }catch(err){console.warn('屏幕预览暂时中断',err.message);}
-  finally{screenFetchBusy=false;}
+ const d=activeDevice;
+ if(screenFetchBusy||!screenViewing||!d||d.demo||mode!=='real'||document.visibilityState!=='visible'||$('detail').style.display!=='block')return;
+ if(!ensureLiveScreen())return;
+ screenFetchBusy=true;
+ const id=d.id,reqId=++screenRequestCount;
+ screenRequestTime=Date.now();
+ try{
+  const response=await fetch('/api/devices/'+encodeURIComponent(id)+'/screen/frame?v=531&r='+reqId,{credentials:'same-origin',cache:'no-store'});
+  if(!activeDevice||activeDevice.id!==id||mode!=='real')return;
+  if(response.status===401){setScreenDiag('画面接口 HTTP 401：管理员登录已过期');return;}
+  if(response.status===204){
+   const reason=response.headers.get('X-Screen-Reason')||'暂无有效帧';
+   setScreenDiag('画面接口 HTTP 204 · '+reason+' · 请求 '+reqId+' 次');
+   if(Date.now()-screenLastFrame>8500){
+    if(screenPreviewUrl){URL.revokeObjectURL(screenPreviewUrl);screenPreviewUrl=null;}
+    $('be-live-image').style.display='none';$('be-live-badge').style.display='none';$('be-screen-stopview').style.display='none';
+    $('be-live-hint').style.display='block';
+    $('be-live-hint').textContent='服务器暂时没有可显示的最新帧';
+   }
+   return;
+  }
+  if(!response.ok){setScreenDiag('画面接口 HTTP '+response.status+' · 请求 '+reqId+' 次');return;}
+  const contentType=response.headers.get('content-type')||'';
+  if(!contentType.includes('image/jpeg')){setScreenDiag('HTTP 200 但不是 JPEG：'+contentType);return;}
+  const blob=await response.blob();
+  if(!activeDevice||activeDevice.id!==id||mode!=='real'||!screenViewing)return;
+  if(blob.size<128){setScreenDiag('HTTP 200，但 JPEG 数据太短：'+blob.size+'B');return;}
+  const newUrl=URL.createObjectURL(blob);const old=screenPreviewUrl;screenPreviewUrl=newUrl;
+  const im=$('be-live-image');
+  im.onload=()=>{
+   if(screenPreviewUrl!==newUrl)return;
+   screenReceivedCount++;screenLastFrame=Date.now();
+   im.style.display='block';$('be-live-hint').style.display='none';$('be-live-badge').style.display='block';$('be-screen-stopview').style.display='block';
+   const age=response.headers.get('X-Frame-Age-Ms')||'?';
+   setScreenDiag('HTTP 200 · JPEG '+blob.size+'B · '+im.naturalWidth+'×'+im.naturalHeight+' · 帧龄 '+age+'ms · 已显示 '+screenReceivedCount+' 帧');
+   if(old)URL.revokeObjectURL(old);
+  };
+  im.onerror=()=>{
+   if(screenPreviewUrl!==newUrl)return;
+   setScreenDiag('HTTP 200，但浏览器未能解码 JPEG ('+blob.size+'B)');
+   URL.revokeObjectURL(newUrl);screenPreviewUrl=null;
+   if(old)URL.revokeObjectURL(old);
+  };
+  im.src=newUrl;
+ }catch(err){setScreenDiag('画面读取异常：'+(err?.message||String(err)).slice(0,140));}
+ finally{screenFetchBusy=false;}
 }
 
 function openDetail(d){clearScreenPreview();activeDevice=d;deviceEvents=[];view('detail');updateDetailHeader(d);
@@ -231,10 +282,4 @@ document.addEventListener('DOMContentLoaded',init);
 
 // Poll only while a real enrolled-device detail is open and foregrounded.
 setInterval(()=>{void pollScreenPreview();},1800);
-$('be-screen-stopview').onclick=()=>{
-  screenViewing=false;
-  if(screenPreviewUrl){URL.revokeObjectURL(screenPreviewUrl);screenPreviewUrl=null;}
-  $('be-live-image').removeAttribute('src');$('be-live-image').style.display='none';
-  $('be-live-badge').style.display='none';$('be-screen-stopview').style.display='none';
-  $('be-live-hint').style.display='block';$('be-live-hint').textContent='已停止在浏览器观看；请在手机端点击“停止屏幕共享”结束上传。重新进入设备详情可再次查看。';
-};
+// Stop-view action is attached by ensureLiveScreen() for both original and repaired layouts.

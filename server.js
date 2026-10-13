@@ -47,7 +47,7 @@ async function audit(action,target='',detail=''){
  if(!managedDb)return;
  try{const {error}=await managedDb.from('be_audit_log').insert({actor:username,action,target,detail:noteValue(detail)});if(error)console.error('[audit]',error.message);}catch(e){console.error('[audit]',e.message);}
 }
-app.get('/api/health',(_req,res)=>res.json({online:true,version:'5.3.0',adminConfigured:configured,databaseConfigured:!!db,managedConfigured:!!managedDb,enrollmentConfigured:installKey.length>=32}));
+app.get('/api/health',(_req,res)=>res.json({online:true,version:'5.3.1',adminConfigured:configured,databaseConfigured:!!db,managedConfigured:!!managedDb,enrollmentConfigured:installKey.length>=32}));
 app.get('/login',(_req,res)=>res.sendFile(path.join(__dirname,'public/login.html')));
 app.post('/api/login',(req,res)=>{
  if(!configured)return res.status(503).json({error:'请先配置 ADMIN_PASSWORD 和 SESSION_SECRET'});
@@ -164,7 +164,7 @@ app.get('/api/audit',mustAuth,async(req,res)=>{
  if(!ready(res))return;
  try{const {data,error}=await managedDb.from('be_audit_log').select('id,actor,action,target,detail,created_at').order('created_at',{ascending:false}).limit(120);if(error)throw error;res.json(data||[]);}catch(e){failure(res,e,'审计日志读取失败');}
 });
-app.get('/api/admin/status',mustAuth,(req,res)=>res.json({version:'5.3.0',username,database:!!db,managed:!!managedDb,enrollmentConfigured:installKey.length>=32,heartbeatSeconds:HEARTBEAT_MS/1000,sessionHours:TTL/3600000}));
+app.get('/api/admin/status',mustAuth,(req,res)=>res.json({version:'5.3.1',username,database:!!db,managed:!!managedDb,enrollmentConfigured:installKey.length>=32,heartbeatSeconds:HEARTBEAT_MS/1000,sessionHours:TTL/3600000}));
 // Android agent enrollment: explicit on-device consent + private installer credential.
 // Note: the installation credential is embedded in privately distributed APKs and can
 // be extracted by a determined attacker. Treat it as pilot provisioning, rotate if leaked.
@@ -270,9 +270,13 @@ app.get('/api/devices/:id/screen/frame',mustAuth,async(req,res)=>{
  const id=value(req.params.id,80);if(!SCREEN_ID.test(id))return res.status(400).json({error:'设备ID错误'});
  // Never return cached frames from an expired or revoked device.
  const state=screenSessions.get(id);
- if(!state||!state.frame||Date.now()-state.capturedAt>SCREEN_MAX_AGE)return res.status(204).end();
- // A session is created only after an authenticated Android device starts the service.
+ if(!state){res.set('X-Screen-Reason','no-active-session');return res.status(204).end();}
+ if(!state.frame){res.set('X-Screen-Reason','waiting-for-first-jpeg');return res.status(204).end();}
+ const age=Date.now()-state.capturedAt;
+ if(age>SCREEN_MAX_AGE){res.set('X-Screen-Reason','jpeg-expired-'+age+'ms');return res.status(204).end();}
+ // Preview requires an authenticated administrator; never persist JPEG frames.
  res.set('Content-Type','image/jpeg');res.set('X-Frame-Captured-At',String(state.capturedAt));
+ res.set('X-Frame-Age-Ms',String(age));
  res.send(state.frame);
 });
 
@@ -280,4 +284,4 @@ app.get('/app.js',mustAuth,(_req,res)=>res.type('application/javascript').sendFi
 app.get('/',(req,res)=>{if(!authorized(req))return res.redirect('/login');res.sendFile(path.join(__dirname,'public/index.html'));});
 app.get('/index.html',(_req,res)=>res.redirect('/'));
 app.use((_req,res)=>res.status(404).send('Not found'));
-app.listen(process.env.PORT||3000,'0.0.0.0',()=>console.log('Black Eagle remote manager V5.3 started'));
+app.listen(process.env.PORT||3000,'0.0.0.0',()=>console.log('Black Eagle remote manager V5.3.1 started'));
