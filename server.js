@@ -1,5 +1,5 @@
 'use strict';
-/** 黑鹰安卓远程 Web V5.0: demo and enrolled devices are separate. */
+/** 黑鹰安卓远程 Web V5.1: consent-based install enrollment, no pair code. */
 const express = require('express');
 const crypto = require('crypto');
 const path = require('path');
@@ -22,6 +22,7 @@ const password=process.env.ADMIN_PASSWORD||'';
 const secret=process.env.SESSION_SECRET||'';
 const configured=password.length>=12&&secret.length>=32;
 const serverKey=process.env.SUPABASE_SERVER_KEY||'';
+const installKey=(process.env.BE_ENROLL_KEY||'').trim();
 const readKey=serverKey||process.env.SUPABASE_KEY||'';
 const dbUrl=(process.env.SUPABASE_URL||'').replace(/\/rest\/v1\/?$/,'').replace(/\/$/,'');
 const options={auth:{persistSession:false,autoRefreshToken:false}};
@@ -46,7 +47,7 @@ async function audit(action,target='',detail=''){
  if(!managedDb)return;
  try{const {error}=await managedDb.from('be_audit_log').insert({actor:username,action,target,detail:noteValue(detail)});if(error)console.error('[audit]',error.message);}catch(e){console.error('[audit]',e.message);}
 }
-app.get('/api/health',(_req,res)=>res.json({online:true,version:'5.0.0',adminConfigured:configured,databaseConfigured:!!db,managedConfigured:!!managedDb}));
+app.get('/api/health',(_req,res)=>res.json({online:true,version:'5.1.0',adminConfigured:configured,databaseConfigured:!!db,managedConfigured:!!managedDb,enrollmentConfigured:installKey.length>=32}));
 app.get('/login',(_req,res)=>res.sendFile(path.join(__dirname,'public/login.html')));
 app.post('/api/login',(req,res)=>{
  if(!configured)return res.status(503).json({error:'请先配置 ADMIN_PASSWORD 和 SESSION_SECRET'});
@@ -108,31 +109,26 @@ app.get('/api/audit',mustAuth,async(req,res)=>{
  if(!ready(res))return;
  try{const {data,error}=await managedDb.from('be_audit_log').select('id,actor,action,target,detail,created_at').order('created_at',{ascending:false}).limit(120);if(error)throw error;res.json(data||[]);}catch(e){failure(res,e,'审计日志读取失败');}
 });
-app.get('/api/admin/status',mustAuth,(req,res)=>res.json({version:'5.0.0',username,database:!!db,managed:!!managedDb,heartbeatSeconds:HEARTBEAT_MS/1000,sessionHours:TTL/3600000}));
-// Paired Android agent endpoints: no screen/secret/communications collection.
-function pairHash(code){return crypto.createHmac('sha256',secret).update('pair:'+code).digest('hex');}
+app.get('/api/admin/status',mustAuth,(req,res)=>res.json({version:'5.1.0',username,database:!!db,managed:!!managedDb,enrollmentConfigured:installKey.length>=32,heartbeatSeconds:HEARTBEAT_MS/1000,sessionHours:TTL/3600000}));
+// Android agent enrollment: explicit on-device consent + private installer credential.
+// Note: the installation credential is embedded in privately distributed APKs and can
+// be extracted by a determined attacker. Treat it as pilot provisioning, rotate if leaked.
 function tokenHash(token){return crypto.createHmac('sha256',secret).update('agent:'+token).digest('hex');}
-app.post('/api/pair-codes',mustAuth,mustOrigin,async(req,res)=>{
- if(!ready(res))return;
- if(!rateLimit('pair',req.ip,8,15*60*1000))return res.status(429).json({error:'配对码创建太频繁'});
- const code=String(crypto.randomInt(10000000,100000000));
- const expires_at=new Date(Date.now()+10*60*1000).toISOString();
- try{const {error}=await managedDb.from('be_pair_codes').insert({code_hash:pairHash(code),expires_at});if(error)throw error;await audit('pair_created','Android设备','创建10分钟有效单次配对码');res.json({code,expires_at});}catch(e){failure(res,e,'配对码创建失败');}
-});
 app.post('/api/agent/enroll',async(req,res)=>{
- if(!managedDb)return res.status(503).json({error:'设备注册服务尚未启用'});
- if(!rateLimit('enroll',req.ip,20,15*60*1000))return res.status(429).json({error:'注册尝试次数过多'});
- const code=value(req.body?.code,20);
- if(!/^\d{8}$/.test(code))return res.status(400).json({error:'无效配对码'});
- const device_name=value(req.body?.device_name,80)||'Android设备',model=value(req.body?.model,80),android_version=value(req.body?.android_version,30),network=value(req.body?.network,30);
- const battery=clampBattery(req.body?.battery);
+ if(!managedDb||installKey.length<32)return res.status(503).json({error:'服务器未配置设备注册服务'});
+ if(!rateLimit('enroll',req.ip,12,60*60*1000))return res.status(429).json({error:'注册过于频繁，请稍后重试'});
+ const supplied=req.get('x-be-install-key')||'';
+ if(supplied.length>256||!equals(digest(supplied),digest(installKey)))return res.status(401).json({error:'安装包未获授权'});
+ if(!req.body||Array.isArray(req.body)||typeof req.body!=='object')return res.status(400).json({error:'缺少设备信息'});
+ const device_name=value(req.body.device_name,80)||'Android设备';
+ const model=value(req.body.model,80),android_version=value(req.body.android_version,30),network=value(req.body.network,30);
+ const battery=clampBattery(req.body.battery);
  if(battery===null)return res.status(400).json({error:'电量必须是0-100之间的整数'});
  try{
-  const {data:used,error:useError}=await managedDb.from('be_pair_codes').update({used_at:new Date().toISOString()}).eq('code_hash',pairHash(code)).is('used_at',null).gt('expires_at',new Date().toISOString()).select('code_hash').maybeSingle();if(useError)throw useError;
-  if(!used)return res.status(401).json({error:'配对码无效、已过期或已经使用'});
-  const id=crypto.randomUUID(), token='bea_'+crypto.randomBytes(32).toString('hex');
-  const {error}=await managedDb.from('be_real_devices').insert({id,device_name,model,android_version,battery,network,api_token_hash:tokenHash(token),last_seen:new Date().toISOString()});if(error)throw error;
-  await audit('device_enrolled',id,'Android设备已使用单次配对码注册');
+  const id=crypto.randomUUID(),token='bea_'+crypto.randomBytes(32).toString('hex');
+  const {error}=await managedDb.from('be_real_devices').insert({id,device_name,model,android_version,battery,network,api_token_hash:tokenHash(token),last_seen:new Date().toISOString()});
+  if(error)throw error;
+  await audit('device_enrolled',id,'已在手机客户端确认授权并注册');
   res.status(201).json({device_id:id,agent_token:token,heartbeat_interval_seconds:40});
  }catch(e){failure(res,e,'设备注册失败');}
 });
@@ -147,6 +143,19 @@ app.post('/api/agent/heartbeat',async(req,res)=>{
   res.json({ok:true,server_time:new Date().toISOString()});
  }catch(e){failure(res,e,'心跳更新失败');}
 });
+// Phone-side disconnect revokes registration and immediately marks offline.
+app.post('/api/agent/disconnect',async(req,res)=>{
+ if(!managedDb)return res.status(503).json({error:'设备服务未启用'});
+ const m=/^Bearer (bea_[0-9a-f]{64})$/.exec(req.headers.authorization||'');
+ if(!m)return res.status(401).json({error:'设备认证失败'});
+ try{
+  const {data,error}=await managedDb.from('be_real_devices').update({last_seen:null,revoked_at:new Date().toISOString()}).eq('api_token_hash',tokenHash(m[1])).is('revoked_at',null).select('id').maybeSingle();
+  if(error)throw error;
+  if(!data)return res.status(401).json({error:'设备密钥已失效'});
+  await audit('device_self_revoked',data.id,'手机客户端主动断开并解除绑定');
+  res.json({ok:true});
+ }catch(e){failure(res,e,'断开设备失败');}
+});
 app.post('/api/devices/:id/revoke',mustAuth,mustOrigin,async(req,res)=>{
  if(!ready(res))return;
  const id=value(req.params.id,80);if(!/^[0-9a-f-]{36}$/.test(id))return res.status(400).json({error:'设备ID错误'});
@@ -156,4 +165,4 @@ app.get('/app.js',mustAuth,(_req,res)=>res.type('application/javascript').sendFi
 app.get('/',(req,res)=>{if(!authorized(req))return res.redirect('/login');res.sendFile(path.join(__dirname,'public/index.html'));});
 app.get('/index.html',(_req,res)=>res.redirect('/'));
 app.use((_req,res)=>res.status(404).send('Not found'));
-app.listen(process.env.PORT||3000,'0.0.0.0',()=>console.log('Black Eagle remote manager V5 started'));
+app.listen(process.env.PORT||3000,'0.0.0.0',()=>console.log('Black Eagle remote manager V5.1 started'));
