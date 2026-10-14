@@ -73,7 +73,63 @@
 #detail .topline .detail-server:hover{background:#193853}
 #listing .heading .righthead strong{color:#bccbe0;font-weight:500}
 #head-server-live{color:#21c989;border:1px solid #285244;border-radius:5px;background:#0d261d;padding:4px 8px;cursor:pointer;font-size:10px}
-</style></head><body>
+/* 黑鹰控制台按钮优化 V2 */
+
+#detail .commands{
+    grid-template-columns:repeat(8,minmax(0,1fr));
+    gap:5px;
+    padding:8px;
+}
+
+#detail .commands button{
+    background:#2560df;
+    border:1px solid #4686f3;
+    color:#fff;
+    height:24px;
+    border-radius:5px;
+    font-size:10px;
+    overflow:hidden;
+    white-space:nowrap;
+}
+
+#detail .commands button:hover{
+    background:#3479ef;
+}
+
+#detail .commands button:disabled{
+    background:#111820;
+    border-color:#303b49;
+    color:#677586;
+}
+
+#detail .topline{
+    height:37px;
+    display:flex;
+    align-items:center;
+    gap:6px;
+    overflow-x:auto;
+    white-space:nowrap;
+}
+
+#detail .topline .detail-mini{
+    background:#101923;
+    border:1px solid #304052;
+    color:#b9d7f5;
+    border-radius:5px;
+    padding:4px 7px;
+}
+
+#detail .topline .detail-server{
+    background:#112439;
+    border-color:#245080;
+    color:#57aafc;
+}
+
+.device-mgmt-row button{
+    background:#1a3555;
+    border:1px solid #36639c;
+    color:#b4d9ff;
+}</style></head><body>
 <aside class="side" id="sidebar"><div class="brand"><span class="eagle">🦅</span>黑鹰安卓远程</div><button><span class="ico">⌂</span>控制台</button><div class="group-title">数据管理</div><button class="active"><span class="ico">▣</span>设备</button><button><span class="ico">▤</span>短信</button><button><span class="ico">♧</span>通知</button><button><span class="ico">▭</span>银行卡</button><button><span class="ico">▣</span>注入数据</button><div class="group-title">设备管理</div><button><span class="ico">♧</span>分组管理　⌄</button><button><span class="ico">⊘</span>黑名单</button><div class="group-title">注入策略</div><button><span class="ico">◎</span>应用设置</button><button><span class="ico">♢</span>注入模板</button><button><span class="ico">✣</span>AI制作模板</button><button><span class="ico">♧</span>短信通知规则</button><button><span class="ico">▤</span>银行检测配置</button><div class="group-title">构建分发</div><button><span class="ico">⚒</span>APK构建</button><div class="group-title">系统设置</div><button><span class="ico">♙</span>用户设置</button><button><span class="ico">♢</span>安全中心</button><button><span class="ico">▤</span>服务器状态</button><button><span class="ico">⌁</span>TURN节点</button><button><span class="ico">▤</span>Telegram设置</button><div class="bottom"><span class="dot">●</span> 系统运行中　v2.0</div></aside>
 <main class="viewport" id="main">
 <div id="listing"><div class="heading"><div class="path">◫　设备管理</div><div class="righthead"><div class="field">金额</div><div class="field">越南盾 VND⌄</div><b>=　0.00</b><div class="field">美元 USD⌄</div><div class="field slim">南非⌄</div><span>南非时间: <strong id="clock-sa">--:--:--</strong></span><span>|</span><span>北京时间: <strong id="clock-bj">--:--:--</strong></span><span class="topicon">⟳</span><button class="header-server" id="head-server-live" type="button" title="查看服务器/IP">● 服务器检测中</button><span class="topicon">🦅</span></div></div>
