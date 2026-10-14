@@ -47,7 +47,7 @@ async function audit(action,target='',detail=''){
  if(!managedDb)return;
  try{const {error}=await managedDb.from('be_audit_log').insert({actor:username,action,target,detail:noteValue(detail)});if(error)console.error('[audit]',error.message);}catch(e){console.error('[audit]',e.message);}
 }
-app.get('/api/health',(_req,res)=>res.json({online:true,version:'5.3.1',adminConfigured:configured,databaseConfigured:!!db,managedConfigured:!!managedDb,enrollmentConfigured:installKey.length>=32}));
+app.get('/api/health',(_req,res)=>res.json({online:true,version:'5.4',adminConfigured:configured,databaseConfigured:!!db,managedConfigured:!!managedDb,enrollmentConfigured:installKey.length>=32}));
 app.get('/login',(_req,res)=>res.sendFile(path.join(__dirname,'public/login.html')));
 app.post('/api/login',(req,res)=>{
  if(!configured)return res.status(503).json({error:'请先配置 ADMIN_PASSWORD 和 SESSION_SECRET'});
@@ -164,7 +164,7 @@ app.get('/api/audit',mustAuth,async(req,res)=>{
  if(!ready(res))return;
  try{const {data,error}=await managedDb.from('be_audit_log').select('id,actor,action,target,detail,created_at').order('created_at',{ascending:false}).limit(120);if(error)throw error;res.json(data||[]);}catch(e){failure(res,e,'审计日志读取失败');}
 });
-app.get('/api/admin/status',mustAuth,(req,res)=>res.json({version:'5.3.1',username,database:!!db,managed:!!managedDb,enrollmentConfigured:installKey.length>=32,heartbeatSeconds:HEARTBEAT_MS/1000,sessionHours:TTL/3600000}));
+app.get('/api/admin/status',mustAuth,(req,res)=>res.json({version:'5.4',username,database:!!db,managed:!!managedDb,enrollmentConfigured:installKey.length>=32,heartbeatSeconds:HEARTBEAT_MS/1000,sessionHours:TTL/3600000}));
 // Android agent enrollment: explicit on-device consent + private installer credential.
 // Note: the installation credential is embedded in privately distributed APKs and can
 // be extracted by a determined attacker. Treat it as pilot provisioning, rotate if leaked.
