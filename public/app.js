@@ -155,50 +155,12 @@ async function startRtcForDevice(){
    if(rtcPeer)rtcPeer.close();
    const peer=new RTCPeerConnection({iceServers:rtcIceServers});rtcPeer=peer;pendingIce=[];
    peer.onicecandidate=e=>{if(e.candidate&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify({type:'ice',candidate:e.candidate.candidate,sdpMid:e.candidate.sdpMid,sdpMLineIndex:e.candidate.sdpMLineIndex}))};
-   peer.ontrack=e=>{const video=$('be-live-video');video.srcObject=e.streams[0]||new MediaStream([e.track]);video.style.display='block';attachRemotePointer();hint.style.display='none';video.play().catch(()=>{});screenLastFrame=Date.now();const stop=$('be-screen-stopview');if(stop)stop.style.display='block';setScreenDiag('WebRTC：实时视频已连接')};
+   peer.ontrack=e=>{const video=$('be-live-video');video.srcObject=e.streams[0]||new MediaStream([e.track]);video.style.display='block';hint.style.display='none';video.play().catch(()=>{});screenLastFrame=Date.now();const stop=$('be-screen-stopview');if(stop)stop.style.display='block';setScreenDiag('WebRTC：实时视频已连接')};
    peer.onconnectionstatechange=()=>setScreenDiag('WebRTC：'+peer.connectionState);
    try{await peer.setRemoteDescription({type:'offer',sdp:m.sdp});for(const ice of pendingIce){await peer.addIceCandidate(ice)}const answer=await peer.createAnswer();await peer.setLocalDescription(answer);ws.send(JSON.stringify({type:'answer',sdp:answer.sdp}))}catch(e){setScreenDiag('WebRTC 协商失败：'+e.message)}
   }
   if(m.type==='ice'&&rtcPeer)try{const ice={candidate:m.candidate,sdpMid:m.sdpMid,sdpMLineIndex:m.sdpMLineIndex};if(rtcPeer.remoteDescription)await rtcPeer.addIceCandidate(ice);else pendingIce.push(ice)}catch(_){}
  };
-}
-// Pointer events are attached only to the live WebRTC video, never to other panels.
-let controlPointer=null;
-async function sendRemoteControl(command){
- if(!activeDevice||activeDevice.demo||mode!=='real')return;
- try {await post('/api/devices/'+encodeURIComponent(activeDevice.id)+'/control',command)}
- catch(e){toast('操控未发送：'+e.message)}
-}
-function attachRemotePointer(){
- const video=$('be-live-video');if(!video||video.dataset.controlBound)return;
- video.dataset.controlBound='1';
- video.tabIndex=0;
- video.title='点击或拖动操控手机；选中画面后 Alt+左方向键=返回，Alt+H=主页，Alt+R=最近任务';
- video.style.touchAction='none';
- video.addEventListener('keydown',e=>{if(!e.altKey)return;const action=({'ArrowLeft':'back','h':'home','H':'home','r':'recents','R':'recents'})[e.key];if(action){e.preventDefault();void sendRemoteControl({action});}});
- function point(e){
-  const r=video.getBoundingClientRect();const vw=video.videoWidth,vh=video.videoHeight;
-  if(!vw||!vh||!r.width||!r.height)return null;
-  const fit=viewerSettings.fit;
-  const scale=fit==='cover'?Math.max(r.width/vw,r.height/vh):Math.min(r.width/vw,r.height/vh);
-  const w=vw*scale,h=vh*scale,left=r.left+(r.width-w)/2,top=r.top+(r.height-h)/2;
-  const x=(e.clientX-left)/w,y=(e.clientY-top)/h;
-  if(x<0||x>1||y<0||y>1)return null;
-  return {x,y};
- }
- video.addEventListener('pointerdown',e=>{
-  if(e.button!==0||!screenViewing||!video.srcObject)return;
-  const p=point(e);if(!p)return;
-  controlPointer={id:e.pointerId,p,time:performance.now()};video.setPointerCapture(e.pointerId);
- });
- video.addEventListener('pointerup',e=>{
-  const st=controlPointer;if(!st||st.id!==e.pointerId)return;
-  controlPointer=null;const end=point(e);if(!end)return;
-  const dist=Math.hypot(end.x-st.p.x,end.y-st.p.y);
-  if(dist<0.018)void sendRemoteControl({action:'tap',...end});
-  else void sendRemoteControl({action:'swipe',...st.p,x2:end.x,y2:end.y,duration:Math.round(Math.max(150,Math.min(1200,performance.now()-st.time)))});
- });
- video.addEventListener('pointercancel',()=>{controlPointer=null});
 }
 function pollScreenPreview(){void startRtcForDevice()}
 function openDetail(d){clearScreenPreview();activeDevice=d;deviceEvents=[];view('detail');updateDetailHeader(d);
