@@ -251,10 +251,10 @@ function initMenus(){
 const keyDefinitions=[
  ['隐藏屏幕'],['锁定屏幕'],['开启阅读器'],['阅读器设置'],['开启ADB模式'],['开启无障碍'],['关闭无障碍'],['无障碍状态'],
  ['密码获取'],['一键解锁'],['画面亮度','brightness'],['开启静音'],['黑屏遮挡'],['取消黑屏'],['开启勿扰'],['关闭勿扰'],
- ['无视锁屏'],['系统锁屏'],['ADB投屏'],['停止观看','pause'],['设备管理','manage'],['关闭声音'],['系统更新'],['投屏设置','settings'],
- ['画面旋转','rotate'],['开始观看','resume'],['刷新连接','refresh'],['网络诊断','network'],['设备信息','info'],['操作日志','events'],['运行状态','status'],['IP/服务器','ipserver'],
- ['植入ADB'],['重启ADB'],['无线配对'],['全屏投屏','full'],['安全设置','safety'],['导入权限'],['应用管理'],['管理设备','manage'],
- ['投屏设置','settings'],['开启日志','events'],['关闭防卸载'],['隐藏模式'],['检查状态','status'],['同步配置','refresh'],['重启连接','refresh'],['重启RPC']
+ ['无视投屏'],['系统投屏'],['ADB投屏'],['停止观看','pause'],['激活管理员'],['移除管理员'],['管理员状态'],['至装APP'],
+ ['黑屏遮挡'],['系统更新'],['阻断运作'],['取消遮挡'],['设备信息','info'],['操作日志','events'],['运行状态','status'],['IP/服务器','ipserver'],
+ ['投屏设置','settings'],['关闭日志'],['关闭防卸载'],['隐藏模式'],['检查状态','status'],['同步配置','refresh'],['重启连接','refresh'],['重启RPC'],
+ ['植入ADB'],['重启ADB'],['无线配对'],['全屏投屏','full'],['安全设置','safety'],['写入权限'],['锁定APP'],['安全APP']
 ];
 const viewerDefaults={intervalMs:1500,brightness:100,fit:'contain',rotation:0};
 let viewerSettings={...viewerDefaults},screenLastPoll=0;
@@ -345,12 +345,23 @@ function executeKey(action){if(!activeDevice)return;
   `最近画面：${$('be-screen-diag')?.textContent||'尚无数据'}`,`仅显示真实状态，不会远程修改手机系统。`]);break;}
  }
 }
+function syncRealControlStates(){
+ const root=$('commands');if(!root)return;
+ root.querySelectorAll('button').forEach(b=>{
+  // Only local viewer actions have a verified client-side on/off state.
+  const a=b.dataset.safeKey;
+  const isOn=a==='pause' && !!screenViewing && !!activeDevice && !activeDevice.demo;
+  b.classList.toggle('bh-state-on',isOn);
+  if(isOn)b.title='正在观看授权画面；点击停止观看';
+ });
+}
 function initControlKeys(){const root=$('commands');
  root.innerHTML=keyDefinitions.map(([label,action])=>{
   const supported=Boolean(action);const hint=supported?'可用：'+({pause:'仅停止网页观看，不停止手机投屏',resume:'继续观看手机主动授权的共享画面',full:'网页窗口全屏',rotate:'只旋转网页图像',brightness:'调整网页图像亮度',settings:'网页显示参数设置',refresh:'从服务器重新读取设备状态',network:'检测服务器接口延迟',info:'读取已注册设备信息',events:'已存储的管理操作记录',status:'展示真实连接统计',manage:'保存名称、分组与备注',ipserver:'显示设备上报的 IP 与真实服务器状态',safety:'查看安全限制与授权状态'}[action]||'网页功能'):'未接入。不执行手机操作或绕过系统授权。';
   return `<button type="button" data-safe-key="${esc(action||'')}" title="${esc(hint)}" ${supported?'':'disabled aria-disabled="true"'} class="${supported?'be-ready':''}">${esc(label)}</button>`;
  }).join('');
- root.querySelectorAll('button.be-ready').forEach(b=>b.onclick=()=>executeKey(b.dataset.safeKey));
+ root.querySelectorAll('button.be-ready').forEach(b=>b.onclick=()=>{executeKey(b.dataset.safeKey);requestAnimationFrame(syncRealControlStates);});
+ syncRealControlStates();
 }
 
 /* Exact-location clocks, current server endpoint, and network diagnostics (read-only). */
