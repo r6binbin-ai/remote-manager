@@ -134,7 +134,16 @@ app.get('/api/devices/:id/overview',mustAuth,async(req,res)=>{
 });
 // Explicit-consent remote control. Volatile, short-lived commands; no covert execution.
 const controlQueues=new Map();
+const controlWaiters=new Map();
 const CONTROL_TTL=8000;
+// At most one pending response per authorized Android device. No background polling load.
+function respondControlWaiter(id,command){
+ const waiter=controlWaiters.get(id);
+ if(!waiter)return false;
+ controlWaiters.delete(id);clearTimeout(waiter.timer);
+ if(!waiter.res.writableEnded&&!waiter.res.destroyed){waiter.res.json({command});return true;}
+ return false;
+}
 app.post('/api/devices/:id/control',mustAuth,mustOrigin,async(req,res)=>{
  const id=value(req.params.id,80);
  if(!SCREEN_ID.test(id))return res.status(400).json({error:'设备编号无效'});
@@ -166,7 +175,20 @@ app.get('/api/agent/control/next',async(req,res)=>{
  while(q.length&&Date.now()-q[0].time>=CONTROL_TTL)q.shift();
  const entry=q.shift();
  if(q.length)controlQueues.set(id,q);else controlQueues.delete(id);
- res.json({command:entry?.command||null});
+  if(entry)return res.json({command:entry.command});
+  if(req.query.wait!=='1')return res.json({command:null});
+  // Long-poll timeout below Android's 22s read timeout and proxy idle timeouts.
+  const previous=controlWaiters.get(id);
+  if(previous)respondControlWaiter(id,null);
+  const waiter={res,timer:null};
+  controlWaiters.set(id,waiter);
+  waiter.timer=setTimeout(()=>{
+   if(controlWaiters.get(id)===waiter)controlWaiters.delete(id);
+   if(!res.writableEnded&&!res.destroyed)res.json({command:null});
+  },15000);
+  res.on('close',()=>{
+   if(controlWaiters.get(id)===waiter){controlWaiters.delete(id);clearTimeout(waiter.timer);}
+  });
 });
 // Persist a device's display name, note and group. Never change agent credentials.
 app.patch('/api/devices/:id/manage',mustAuth,mustOrigin,async(req,res)=>{
