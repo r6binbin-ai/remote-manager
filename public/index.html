@@ -73,12 +73,116 @@
 #detail .topline .detail-server:hover{background:#193853}
 #listing .heading .righthead strong{color:#bccbe0;font-weight:500}
 #head-server-live{color:#21c989;border:1px solid #285244;border-radius:5px;background:#0d261d;padding:4px 8px;cursor:pointer;font-size:10px}
-</style></head><body>
+</style>
+<style id="bh-visual-1to1">
+/* 设备详情布局：仅作用于详情容器，不影响登录、设备列表、数据库/API */
+#detail.control-page{height:100vh;overflow:hidden;color:#b9cde3;font-size:11px;background:#0a1017}
+#detail .bh-target-top{height:35px!important;min-height:35px;padding:3px 5px!important;gap:5px!important;flex-wrap:nowrap!important;overflow-x:auto;border:1px solid #2c3b4b;border-radius:6px;background:#101821;align-content:center}
+#detail .bh-target-top>b{font-size:13px!important;color:#eff6ff}
+#detail .bh-target-top .tool{height:24px;padding:0 7px}
+#detail .bh-target-top .tag{font-size:10px;flex-shrink:0}
+#detail .bh-target-top .detail-mini{padding:3px 5px}
+#detail .threepane{display:grid;grid-template-columns:46% minmax(0,54%);gap:7px;height:calc(100vh - 45px);min-height:0}
+#detail .leftpane,#detail .rightpane{min-width:0;min-height:0;background:#101720;border:1px solid #273748;border-radius:11px;padding:9px!important;overflow:hidden}
+#detail .leftpane{display:flex;flex-direction:column;gap:7px}
+#detail .screens{height:auto!important;flex:1 1 auto;min-height:180px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+#detail .screen{min-width:0;min-height:0;background:#000;border:1px solid #1f2d3c;border-radius:12px;color:#5e84aa;display:flex;align-items:center;justify-content:center;font-size:11px;text-align:center}
+#detail .bh-reader-screen{order:0}#detail .screen.live-screen{order:1;background:#000}#detail .bh-adb-screen{order:2}
+#detail .quick.bh-quick{flex:0 0 34px;height:34px!important;min-height:34px;display:flex;gap:8px;justify-content:space-between;align-items:center}
+#detail .bh-quick .tool{height:28px;margin-right:4px;padding:0 8px}
+#detail .bh-quick-right{display:flex;gap:4px;align-items:center;min-width:0}#detail .bh-command-note{display:block;color:#627c98;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#detail .bh-commands-wrap{flex:0 0 252px;min-height:0;border:1px solid #2a3b50;background:#0b1018;border-radius:8px;padding:6px;overflow-y:auto}
+#detail .commands{border:0!important;height:auto!important;display:grid;grid-template-columns:repeat(8,minmax(0,1fr))!important;grid-auto-rows:32px!important;gap:5px!important;overflow:visible!important;padding:0!important;background:transparent!important}
+#detail .commands button{min-width:0;background:#132030;color:#8dabce;border:1px solid #304760;border-radius:6px;font-size:10px;line-height:1.1;padding:2px 3px;white-space:normal;text-overflow:clip;overflow:hidden}
+#detail .commands button.be-ready{background:#276aeb;border-color:#4689fe;color:#fff}
+#detail .commands button[disabled]{opacity:1;background:#101925;color:#607d9b;border-color:#2b3d50}
+#detail .bh-projection-status{flex:0 0 35px;background:#0b2a1e;color:#04cf7a;border:1px solid #137e56;border-radius:7px;display:flex;align-items:center;padding:0 14px;font-size:11px;font-weight:600}
+#detail .rightpane{display:flex;flex-direction:column;gap:8px}
+#detail .tabs{flex:0 0 28px;height:28px!important;display:flex;gap:5px;overflow-x:auto;scrollbar-width:thin;scrollbar-color:#39495c #101720}
+#detail .tabs .tool{height:27px;flex:0 0 auto;padding:0 10px;background:#141e2a;border:1px solid #2d4053;border-radius:7px;color:#9bb3cf;font-size:11px}
+#detail .tabs .tool.current{background:#321824;border-color:#9b3149;color:#fc697e}
+#detail .analysis{height:auto!important;flex:1;min-height:0;border:1px solid #304154;border-radius:10px;background:#131b25;position:relative;display:flex;align-items:stretch;justify-content:flex-start;flex-direction:column;color:#afc9e8;overflow:hidden}
+#detail .bh-panel-heading{height:48px;flex-shrink:0;padding:11px 15px;display:flex;align-items:center;justify-content:space-between;gap:10px;color:#b6d8ff;font-size:12px;font-weight:700}
+#detail .bh-panel-heading .rightactions{position:static!important;display:flex;align-items:center;gap:5px}
+#detail .bh-panel-heading .tool{height:27px}
+#detail .analysis .device-info-panel{display:none;position:static!important;flex:1;min-height:0;padding:0 15px 12px;overflow-y:auto;align-self:stretch;font-size:12px}
+#detail .analysis.has-device-panel .device-info-panel{display:block}
+#detail .info-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;align-content:start}
+#detail .info-tile{background:#0f1b27;border:1px solid #30465d;border-radius:6px;padding:9px 11px;min-height:58px}
+#detail .info-tile .info-label{font-size:11px;margin-bottom:5px}
+#detail .info-tile .info-value{font-size:12px}
+#detail .analysis #panel-empty-icon,#detail .analysis #panel-empty-text{position:static!important;align-self:center;text-align:center;margin:15px;line-height:1.8}
+#detail .analysis #panel-empty-text{max-width:85%;white-space:pre-wrap}
+#detail .bh-sms-toolbar{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:0 0 12px}
+#detail .bh-sms-toolbar input{background:#0e1824;border:1px solid #2d4359;border-radius:6px;color:#dcecff;height:27px;padding:0 8px;width:190px;max-width:100%}
+#detail .bh-sms-toolbar button{height:27px;border:1px solid #315174;color:#8dbfff;border-radius:6px;background:#122336;padding:0 9px}
+#detail .bh-sms-toolbar button:disabled{opacity:.5;cursor:not-allowed}
+#detail .bh-sms-table{width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed}
+#detail .bh-sms-table th,#detail .bh-sms-table td{text-align:left;border-bottom:1px solid #283747;padding:12px 7px;color:#a8c7e6}
+#detail .bh-sms-table th:first-child{width:22%}#detail .bh-sms-table th:last-child{width:19%;text-align:right}
+#detail .bh-sms-table td[colspan]{text-align:center;color:#829bb8;padding:45px 10px}
+@media(max-height:730px){#detail .bh-commands-wrap{flex-basis:190px}#detail .commands{grid-auto-rows:25px!important;gap:3px!important}#detail .screens{min-height:100px}}
+@media(max-width:1100px){#detail .threepane{grid-template-columns:48% minmax(0,52%)}#detail .bh-commands-wrap{flex-basis:240px}#detail .commands{grid-template-columns:repeat(4,minmax(0,1fr))!important}#detail .bh-command-note{display:none}}
+</style>
+</head><body>
 <aside class="side" id="sidebar"><div class="brand"><span class="eagle">🦅</span>黑鹰安卓远程</div><button><span class="ico">⌂</span>控制台</button><div class="group-title">数据管理</div><button class="active"><span class="ico">▣</span>设备</button><button><span class="ico">▤</span>短信</button><button><span class="ico">♧</span>通知</button><button><span class="ico">▭</span>银行卡</button><button><span class="ico">▣</span>注入数据</button><div class="group-title">设备管理</div><button><span class="ico">♧</span>分组管理　⌄</button><button><span class="ico">⊘</span>黑名单</button><div class="group-title">注入策略</div><button><span class="ico">◎</span>应用设置</button><button><span class="ico">♢</span>注入模板</button><button><span class="ico">✣</span>AI制作模板</button><button><span class="ico">♧</span>短信通知规则</button><button><span class="ico">▤</span>银行检测配置</button><div class="group-title">构建分发</div><button><span class="ico">⚒</span>APK构建</button><div class="group-title">系统设置</div><button><span class="ico">♙</span>用户设置</button><button><span class="ico">♢</span>安全中心</button><button><span class="ico">▤</span>服务器状态</button><button><span class="ico">⌁</span>TURN节点</button><button><span class="ico">▤</span>Telegram设置</button><div class="bottom"><span class="dot">●</span> 系统运行中　v2.0</div></aside>
 <main class="viewport" id="main">
 <div id="listing"><div class="heading"><div class="path">◫　设备管理</div><div class="righthead"><div class="field">金额</div><div class="field">越南盾 VND⌄</div><b>=　0.00</b><div class="field">美元 USD⌄</div><div class="field slim">南非⌄</div><span>南非时间: <strong id="clock-sa">--:--:--</strong></span><span>|</span><span>北京时间: <strong id="clock-bj">--:--:--</strong></span><span class="topicon">⟳</span><button class="header-server" id="head-server-live" type="button" title="查看服务器/IP">● 服务器检测中</button><span class="topicon">🦅</span></div></div>
 <div class="stats"><div class="metric red">▯ <span class="n" id="sum-total">0</span> 总设备</div><div class="metric green">⌁ <span class="n" id="sum-online">0</span> 在线</div><div class="metric">⌁ <span class="n" id="sum-offline">0</span> 离线</div><div class="metric blue"><span id="sum-access">0</span> 无障碍</div><div class="metric orange"><span id="sum-adb">0</span> ADB</div><div class="metric cyan"><span id="sum-ai">0</span> AI分析</div><div class="modebar" aria-label="设备模式"><button class="modechoice active" id="mode-demo" title="仅用于页面与功能测试">◈ 演示设备</button><button class="modechoice" id="mode-real" title="仅显示已授权注册的实际手机">◉ 真实设备</button><span id="mode-tag">演示数据 · 非真实连接</span></div></div>
 <div class="toolbar"><button class="tool small selected">▦</button><button class="tool small">☷</button><input id="search" placeholder="⌕ 搜索设备名、型号、IP、备注..."/><select class="tool" id="group-filter" aria-label="选择分组"><option value="all">全部分组</option></select><select class="tool" id="status-filter" aria-label="在线状态"><option value="all">数据筛选 · 全部</option><option value="online">在线</option><option value="offline">离线</option></select><select class="tool" id="country-filter" aria-label="国家筛选"><option value="all">◎ 国家筛选</option></select><button class="tool">全部应用</button><button class="tool on">♧ 全局通知</button><button class="tool" disabled>♧ 分组</button><button class="tool" disabled>♧ 置顶</button><button class="tool" disabled>↔ 批量转移</button><button class="tool" disabled>➤ 批量下发</button><button class="tool" disabled>⊘ 批量拉黑</button><button class="tool" disabled>▤ 批量删除</button><button class="tool">□ 全选</button><button class="tool">⌁ 全选离线</button><button class="tool">▣ 日期</button><button class="tool" id="export-csv">⇩ 导出CSV</button><button class="tool" id="add-pair" hidden>⊕ 设备接入</button><button class="tool" id="refresh">⟳ 刷新</button><button class="tool" id="preview">◈ 布局预览</button><button class="tool" id="logout">退出</button></div>
 <div class="frame"><div class="cards" id="cards"></div></div><div class="pagination"><span class="preview-mark" id="source-label">正在读取设备数据…</span><span>每页行数</span><select id="page-size"><option>20</option><option selected>50</option><option>100</option></select><span id="pageinfo">0 / 共 0</span><button class="page-arrow" id="page-prev">‹</button><span id="page-number">1</span><button class="page-arrow" id="page-next">›</button></div></div>
-<div id="module"><h2 id="modtitle"></h2><p id="moddesc"></p><div id="module-content"></div></div><div id="detail" class="control-page"><div class="topline"><button class="tool" id="back">← 返回设备管理</button><b id="dev-name">Redmi A5</b><span class="tag access" id="dev-status">未连接</span><span class="tag" id="dev-network">—</span><span class="tag sim" id="dev-mode">演示</span><span class="tag access" title="未经手机端授权与验证">权限未上报</span><span class="battery" id="dev-battery">—</span><span class="tag screen" id="dev-id">设备ID: —</span><span id="dev-system">系统 —</span><span id="dev-last" class="detail-last">心跳 —</span><span class="detail-mini">南非 <strong id="detail-clock-sa">--:--:--</strong></span><span class="detail-mini">北京 <strong id="detail-clock-bj">--:--:--</strong></span><span class="detail-mini" id="dev-ip-live" title="设备真实上报 IP">IP: 未上报</span><span class="detail-mini" id="dev-netstate">地区未上报</span><button type="button" class="detail-mini detail-server" id="detail-ipserver">服务器: 检测中 · IP/服务器</button><span id="dev-server-live" class="detail-mini" hidden></span><button class="tool" id="detail-edit">名称/备注/分组</button><button class="tool" id="detail-revoke" hidden>撤销授权</button></div><div class="threepane"><div class="leftpane"><div class="screens"><div class="screen live-screen"><div id="be-live-hint">手机端打开黑鹰客户端 → 点击开始屏幕共享<br>允许 Android 系统录屏授权后，画面才会显示</div><img id="be-live-image" alt="已获授权的实时手机屏幕"><div id="be-live-badge">● 手机正在共享</div><button id="be-screen-stopview" type="button">停止观看</button></div><div class="screen">无实际视频画面</div><div class="screen">无实际ADB画面</div></div><div class="quick"><div><button class="tool">🌐 同步翻译</button><button class="tool">▤ 虚拟键盘</button></div><div><button class="tool">⌂</button><button class="tool">⚙</button><button class="tool">发送</button></div></div><div class="commands" id="commands"></div></div><div class="rightpane"><div class="tabs" id="tabs"></div><div class="analysis"><div class="sectionlabel" id="panel-title">⌁　设备信息</div><div class="rightactions"><button class="tool" id="detail-refresh">⟳ 刷新信息</button><button class="tool" id="detail-analysis" disabled title="AI分析尚未接入">立即分析（未接入）</button></div><div class="phonecircle" id="panel-empty-icon" hidden>🤖</div><div id="panel-empty-text" hidden>该设备尚未进行AI分析</div><div id="device-info-panel" class="device-info-panel" role="region" aria-label="设备信息和操作记录"></div></div></div></div></div>
-</main><dialog id="meta-dialog" class="edit-dialog"><form id="meta-form"><h2>设备信息管理</h2><p id="editing-label"></p><label id="name-field">设备显示名称<input id="meta-name" maxlength="80" minlength="2" placeholder="例如：Pixel 3 测试机"></label><label>分组名称<input id="meta-group" maxlength="45" placeholder="例如：测试组、海外业务组"></label><label>备注<textarea id="meta-note" maxlength="500" rows="5" placeholder="添加设备用途或管理备注"></textarea></label><div class="edit-actions"><button type="button" id="meta-cancel">取消</button><button type="submit" class="primary" id="meta-save">保存到数据库</button></div><p id="meta-error" role="status"></p></form></dialog><script src="/app.js?v=540" defer></script></body></html>
+<div id="module"><h2 id="modtitle"></h2><p id="moddesc"></p><div id="module-content"></div></div><div id="detail" class="control-page">
+  <div class="topline bh-target-top">
+    <button class="tool" id="back">← 返回设备管理</button>
+    <b id="dev-name">设备</b>
+    <span class="tag access" id="dev-status">未连接</span>
+    <span class="tag" id="dev-network">—</span>
+    <span class="tag sim" id="dev-mode">真实注册</span>
+    <span class="tag access" title="需手机端单独授予权限">权限未上报</span>
+    <span class="battery" id="dev-battery">—</span>
+    <span class="detail-mini">南非 <strong id="detail-clock-sa">--:--:--</strong></span>
+    <span class="detail-mini">北京 <strong id="detail-clock-bj">--:--:--</strong></span>
+    <span class="tag screen" id="dev-id">设备ID: —</span>
+    <span id="dev-system">系统 —</span>
+    <span id="dev-last">心跳 —</span>
+    <span class="detail-mini" id="dev-ip-live">IP: 未上报</span>
+    <span class="detail-mini" id="dev-netstate">地区未上报</span>
+    <button type="button" class="detail-mini detail-server" id="detail-ipserver">服务器: 检测中</button>
+    <span id="dev-server-live" class="detail-mini" hidden></span>
+    <button class="tool" id="detail-edit">名称/备注/分组</button>
+    <button class="tool" id="detail-revoke" hidden>撤销授权</button>
+  </div>
+  <div class="threepane">
+    <section class="leftpane">
+      <div class="screens">
+        <div class="screen bh-reader-screen"><span>屏幕阅读未开启</span></div>
+        <div class="screen live-screen">
+          <div id="be-live-hint">等待手机端主动授权屏幕共享</div>
+          <img id="be-live-image" alt="手机端授权共享的实时屏幕">
+          <div id="be-live-badge">● 手机正在共享</div>
+          <button id="be-screen-stopview" type="button">停止观看</button>
+        </div>
+        <div class="screen bh-adb-screen"><span>当前无ADB画面</span></div>
+      </div>
+      <div class="quick bh-quick">
+        <div><button class="tool">◉ 同步翻译</button><button class="tool">▤ 虚拟键盘</button></div>
+        <div class="bh-quick-right"><span class="bh-command-note">控制操作仅在获得设备持有人授权后可用</span><button class="tool">♧</button><button class="tool">⚙</button><button class="tool">发送</button></div>
+      </div>
+      <div class="bh-commands-wrap"><div class="commands" id="commands"></div></div>
+      <div class="bh-projection-status">● 当前投屏：<span id="bh-projection-label">未连接共享画面</span></div>
+    </section>
+    <section class="rightpane">
+      <nav class="tabs" id="tabs" aria-label="设备数据标签"></nav>
+      <div class="analysis">
+        <div class="bh-panel-heading">
+          <span id="panel-title">设备信息</span>
+          <div class="rightactions"><button class="tool" id="detail-refresh">⟳ 刷新信息</button><button class="tool" id="detail-analysis" disabled title="尚未接入">立即分析（未接入）</button></div>
+        </div>
+        <div class="phonecircle" id="panel-empty-icon" hidden>▤</div>
+        <div id="panel-empty-text" hidden></div>
+        <div id="device-info-panel" class="device-info-panel" role="region" aria-label="设备信息与操作记录"></div>
+      </div>
+    </section>
+  </div>
+</div>
+</main><dialog id="meta-dialog" class="edit-dialog"><form id="meta-form"><h2>设备信息管理</h2><p id="editing-label"></p><label id="name-field">设备显示名称<input id="meta-name" maxlength="80" minlength="2" placeholder="例如：Pixel 3 测试机"></label><label>分组名称<input id="meta-group" maxlength="45" placeholder="例如：测试组、海外业务组"></label><label>备注<textarea id="meta-note" maxlength="500" rows="5" placeholder="添加设备用途或管理备注"></textarea></label><div class="edit-actions"><button type="button" id="meta-cancel">取消</button><button type="submit" class="primary" id="meta-save">保存到数据库</button></div><p id="meta-error" role="status"></p></form></dialog><script src="/app.js?v=550" defer></script></body></html>
