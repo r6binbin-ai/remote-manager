@@ -169,7 +169,27 @@ async function sendRemoteControl(command){
  try {await post('/api/devices/'+encodeURIComponent(activeDevice.id)+'/control',command)}
  catch(e){toast('操控未发送：'+e.message)}
 }
+// Device-independent Android navigation controls, outside the streamed video.
+function ensureRemoteNavigation(){
+ const quick=document.querySelector('#detail .quick.bh-quick');
+ if(!quick || quick.querySelector('#be-remote-nav'))return;
+ const actions=[['↩','返回','back'],['⌂','主页','home'],['▢','最近任务','recents']];
+ const bar=document.createElement('div');bar.id='be-remote-nav';
+ bar.setAttribute('aria-label','远程手机系统导航');
+ bar.style.cssText='display:inline-flex;gap:5px;align-items:center;margin-left:8px;flex-shrink:0';
+ for(const [glyph,label,action] of actions){
+  const btn=document.createElement('button');
+  btn.type='button';btn.className='tool';btn.textContent=glyph;
+  btn.title=label;btn.setAttribute('aria-label',label);
+  btn.style.cssText='min-width:31px;height:29px;padding:3px 7px;font-size:16px;cursor:pointer';
+  btn.addEventListener('click',e=>{e.preventDefault();void sendRemoteControl({action});});
+  bar.appendChild(btn);
+ }
+ const left=quick.firstElementChild;
+ if(left)left.appendChild(bar);else quick.prepend(bar);
+}
 function attachRemotePointer(){
+ ensureRemoteNavigation();
  const video=$('be-live-video');if(!video||video.dataset.controlBound)return;
  video.dataset.controlBound='1';
  video.tabIndex=0;
@@ -195,7 +215,12 @@ function attachRemotePointer(){
   const st=controlPointer;if(!st||st.id!==e.pointerId)return;
   controlPointer=null;const end=point(e);if(!end)return;
   const dist=Math.hypot(end.x-st.p.x,end.y-st.p.y);
-  if(dist<0.018)void sendRemoteControl({action:'tap',...end});
+  // Android three-button navigation area: dispatch system actions rather than taps.
+  // Limit this mapping to brief taps in the bottom 8% to preserve normal swipes.
+  if(dist<0.018 && end.y>=0.92 && st.p.y>=0.92){
+   const action=end.x<1/3?'back':end.x<2/3?'home':'recents';
+   void sendRemoteControl({action});
+  }else if(dist<0.018)void sendRemoteControl({action:'tap',...end});
   else void sendRemoteControl({action:'swipe',...st.p,x2:end.x,y2:end.y,duration:Math.round(Math.max(150,Math.min(1200,performance.now()-st.time)))});
  });
  video.addEventListener('pointercancel',()=>{controlPointer=null});
