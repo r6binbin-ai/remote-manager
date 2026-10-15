@@ -164,6 +164,22 @@
 @media(max-width:1350px){#detail .bh-sms-toolbar{margin-top:0!important;margin-left:0!important;justify-content:flex-start!important;flex-wrap:wrap!important;margin-bottom:9px!important}#detail .bh-commands-wrap{flex-basis:250px!important}#detail .commands{grid-auto-rows:30px!important}}
 @media(max-height:760px){#detail .bh-commands-wrap{flex-basis:188px!important}#detail .commands{grid-auto-rows:27px!important;gap:4px!important}}
 </style>
+
+<style id="bh-buttons-compact-20261015">
+/* Keep the existing live device integration; only adjust detail control layout. */
+#detail .leftpane{gap:5px!important}
+#detail .bh-commands-wrap{flex:0 0 auto!important;height:clamp(150px,24vh,205px)!important;min-height:0!important;overflow:hidden!important;padding:4px!important}
+#detail .commands{height:100%!important;display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr)) 10px repeat(4,minmax(0,1fr))!important;grid-template-rows:repeat(6,minmax(0,1fr))!important;grid-auto-rows:0!important;gap:4px!important;overflow:hidden!important;align-content:stretch!important}
+#detail .commands button{min-width:0!important;min-height:0!important;height:100%!important;padding:1px 2px!important;font-size:clamp(8px,.56vw,10px)!important;line-height:1.12!important;border-radius:5px!important;white-space:normal!important;overflow:hidden!important;word-break:keep-all!important}
+#detail .commands button:nth-child(8n + 5){grid-column:6!important}
+#detail .commands button.be-ready{background:#2871ef!important;color:#fff!important;border-color:#4385fa!important}
+#detail .commands button[disabled]{background:#121b27!important;color:#7589a1!important;border-color:#2d4057!important}
+#detail .commands button.bh-state-on{background:#ba263a!important;border-color:#ec5367!important;color:#fff!important}
+#detail .bh-projection-status{flex:0 0 30px!important}
+#detail .quick.bh-quick{flex-basis:30px!important;height:30px!important;min-height:30px!important}
+@media(max-height:740px){#detail .bh-commands-wrap{height:clamp(140px,29vh,184px)!important}#detail .screens{min-height:90px!important}}
+@media(max-width:1100px){#detail .commands{grid-template-columns:repeat(4,minmax(0,1fr)) 8px repeat(4,minmax(0,1fr))!important}}
+</style>
 </head><body>
 <aside class="side" id="sidebar"><div class="brand"><span class="eagle">🦅</span>黑鹰安卓远程</div><button><span class="ico">⌂</span>控制台</button><div class="group-title">数据管理</div><button class="active"><span class="ico">▣</span>设备</button><button><span class="ico">▤</span>短信</button><button><span class="ico">♧</span>通知</button><button><span class="ico">▭</span>银行卡</button><button><span class="ico">▣</span>注入数据</button><div class="group-title">设备管理</div><button><span class="ico">♧</span>分组管理　⌄</button><button><span class="ico">⊘</span>黑名单</button><div class="group-title">注入策略</div><button><span class="ico">◎</span>应用设置</button><button><span class="ico">♢</span>注入模板</button><button><span class="ico">✣</span>AI制作模板</button><button><span class="ico">♧</span>短信通知规则</button><button><span class="ico">▤</span>银行检测配置</button><div class="group-title">构建分发</div><button><span class="ico">⚒</span>APK构建</button><div class="group-title">系统设置</div><button><span class="ico">♙</span>用户设置</button><button><span class="ico">♢</span>安全中心</button><button><span class="ico">▤</span>服务器状态</button><button><span class="ico">⌁</span>TURN节点</button><button><span class="ico">▤</span>Telegram设置</button><div class="bottom"><span class="dot">●</span> 系统运行中　v2.0</div></aside>
 <main class="viewport" id="main">
