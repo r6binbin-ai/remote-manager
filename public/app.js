@@ -54,7 +54,7 @@ function infoTile(label,value,type=''){return `<div class="info-tile"><div class
 function renderDevicePanel(){
  const d=activeDevice,p=$('device-info-panel'),analysis=$('detail').querySelector('.analysis');
  if(!d)return;
- const isData=['设备信息','操作记录'].includes(activePanel);
+ const isData=['设备信息','操作记录','短信'].includes(activePanel);
  analysis.classList.toggle('has-device-panel',isData);
  $('panel-title').textContent='⌁　'+activePanel;
  $('panel-empty-icon').hidden=isData;
@@ -74,6 +74,9 @@ function renderDevicePanel(){
   $('panel-manage').onclick=()=>edit(d);
   $('panel-reload').onclick=()=>{if(d.demo)load().then(()=>{const nd=source.find(x=>x.id===d.id);if(nd){activeDevice=nd;updateDetailHeader(nd);renderDevicePanel();}});else refreshOverview();};
   if(!d.demo)$('panel-revoke').onclick=revoke;
+ }else if(activePanel==='短信'){
+  p.innerHTML=`<div class="bh-sms-toolbar"><input type="search" placeholder="搜索发送方/内容..." aria-label="搜索短信" disabled><button disabled>获取短信</button><button disabled>翻译本页</button><button disabled>导出</button><button disabled>刷新</button><button disabled>清空</button></div><table class="bh-sms-table"><thead><tr><th>号码</th><th>内容</th><th>时间</th></tr></thead><tbody><tr><td colspan="3">未接入短信读取功能；这里不会显示或获取手机短信。
+此表仅用于还原参考截图的布局。</td></tr></tbody></table>`;
  }else if(activePanel==='操作记录'){
   p.innerHTML=d.demo?'<p class="device-mgmt-note">演示设备无真实连接日志。</p>':
     `<div class="device-event device-event-head"><span>时间</span><span>操作</span><span>详情</span></div>`+
@@ -113,7 +116,7 @@ let screenRequestCount=0, screenReceivedCount=0, screenRequestTime=0;
 function ensureLiveScreen(){
  const panel=$('detail')?.querySelector('.screens');
  if(!panel)return null;
- const first=panel.querySelector('.screen');
+ const first=panel.querySelector('.screen.live-screen') || panel.querySelector('.screen');
  if(!first)return null;
  first.classList.add('live-screen');
  if(!$('be-live-image')){
@@ -180,7 +183,7 @@ async function pollScreenPreview(){
   im.onload=()=>{
    if(screenPreviewUrl!==newUrl)return;
    screenReceivedCount++;screenLastFrame=Date.now();
-   im.style.display='block';applyViewerSettings();$('be-live-hint').style.display='none';$('be-live-badge').style.display='block';$('be-screen-stopview').style.display='block';
+   im.style.display='block';if($('bh-projection-label'))$('bh-projection-label').textContent='已获授权共享';applyViewerSettings();$('be-live-hint').style.display='none';$('be-live-badge').style.display='block';$('be-screen-stopview').style.display='block';
    const age=response.headers.get('X-Frame-Age-Ms')||'?';
    setScreenDiag('HTTP 200 · JPEG '+blob.size+'B · '+im.naturalWidth+'×'+im.naturalHeight+' · 帧龄 '+age+'ms · 已显示 '+screenReceivedCount+' 帧');
    if(old)URL.revokeObjectURL(old);
@@ -197,9 +200,8 @@ async function pollScreenPreview(){
 }
 
 function openDetail(d){clearScreenPreview();activeDevice=d;deviceEvents=[];view('detail');updateDetailHeader(d);
- $('detail').querySelectorAll('.screen')[1].textContent='当前无实时控制画面';
- $('detail').querySelectorAll('.screen')[2].textContent='当前无ADB画面';
- selectPanel('设备信息');if(!d.demo)void refreshOverview(true);
+
+ selectPanel('短信');if(!d.demo)void refreshOverview(true);
 }
 async function load(){setModeUI();$('source-label').textContent='正在读取设备信息…';if(layoutPreview&&mode==='demo'){source=previewData();updateFilters();render();$('source-label').textContent='布局预览：41台虚构设备（不计入真实设备）';return;}
  try{const data=await json('/api/devices?mode='+mode);source=data.map(normalize);page=1;updateFilters();render();$('source-label').textContent=mode==='demo'?'演示模式 · 当前 '+source.length+' 条数据库测试记录，不代表已连接手机':'真实模式 · 仅显示已授权注册设备，在线状态依据120秒内有效心跳';}
