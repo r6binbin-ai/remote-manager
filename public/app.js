@@ -108,97 +108,61 @@ async function refreshOverview(quiet=false){
  finally{detailFetching=false;}
 }
 
-// Live JPEG preview from a phone that started Android MediaProjection itself.
-// The admin website cannot start MediaProjection remotely. No frames are recorded.
-let screenPreviewUrl=null, screenLastFrame=0, screenFetchBusy=false, screenViewing=true;
-let screenRequestCount=0, screenReceivedCount=0, screenRequestTime=0;
-// Repair/mount the live-view DOM even when a browser loaded an older page layout.
+// Continuous WebRTC video with authenticated signaling; phone must opt in on device.
+let screenViewing=true,rtcSocket=null,rtcPeer=null;
+let screenRequestCount=0,screenReceivedCount=0,screenLastFrame=0;
 function ensureLiveScreen(){
- const panel=$('detail')?.querySelector('.screens');
- if(!panel)return null;
- const first=panel.querySelector('.screen.live-screen') || panel.querySelector('.screen');
- if(!first)return null;
+ const panel=$('detail')?.querySelector('.screens');if(!panel)return null;
+ const first=panel.querySelector('.screen.live-screen')||panel.querySelector('.screen');if(!first)return null;
  first.classList.add('live-screen');
- if(!$('be-live-image')){
-  first.textContent='';
-  const im=document.createElement('img');im.id='be-live-image';im.alt='手机端已授权的实时屏幕画面';im.style.display='none';first.appendChild(im);
-  const hint=document.createElement('div');hint.id='be-live-hint';first.appendChild(hint);
-  const badge=document.createElement('div');badge.id='be-live-badge';badge.textContent='● 手机正在共享';first.appendChild(badge);
-  const stop=document.createElement('button');stop.id='be-screen-stopview';stop.type='button';stop.textContent='停止观看';first.appendChild(stop);
+ if(!$('be-live-video')){
+  const video=document.createElement('video');video.id='be-live-video';video.autoplay=true;video.playsInline=true;video.muted=true;
+  video.style.cssText='width:100%;height:100%;object-fit:contain;background:black;display:none';first.appendChild(video);
  }
- let diag=$('be-screen-diag');
- if(!diag){diag=document.createElement('div');diag.id='be-screen-diag';diag.setAttribute('role','status');first.appendChild(diag);}
- const stop=$('be-screen-stopview');
- if(stop&&!stop.dataset.beBound){stop.dataset.beBound='1';stop.onclick=()=>{
-    screenViewing=false;
-    if(screenPreviewUrl){URL.revokeObjectURL(screenPreviewUrl);screenPreviewUrl=null;}
-    $('be-live-image').removeAttribute('src');$('be-live-image').style.display='none';
-    $('be-live-badge').style.display='none';stop.style.display='none';
-    $('be-live-hint').style.display='block';$('be-live-hint').textContent='已停止在网页观看。手机端仍可能正在共享；请在手机上点击“停止屏幕共享”结束上传。重新进入详情页可再次查看。';
-    setScreenDiag('本页已停止观看');
-  };}
- return first;
+ let hint=$('be-live-hint');if(!hint){hint=document.createElement('div');hint.id='be-live-hint';first.appendChild(hint)}
+ let diag=$('be-screen-diag');if(!diag){diag=document.createElement('div');diag.id='be-screen-diag';first.appendChild(diag)}
+ let stop=$('be-screen-stopview');if(!stop){stop=document.createElement('button');stop.id='be-screen-stopview';stop.textContent='停止观看';first.appendChild(stop)}
+ stop.onclick=()=>{screenViewing=false;closeRtc();hint.style.display='block';hint.textContent='已停止网页观看。请在手机上停止屏幕共享以结束发送。';};
+ const image=$('be-live-image');if(image)image.style.display='none';return first;
 }
-function setScreenDiag(message){const d=$('be-screen-diag');if(d)d.textContent=String(message);}
-function clearScreenPreview(){
- ensureLiveScreen();
- if(screenPreviewUrl){URL.revokeObjectURL(screenPreviewUrl);screenPreviewUrl=null;}
- screenLastFrame=0;screenViewing=true;screenRequestCount=0;screenReceivedCount=0;
- const image=$('be-live-image'),hint=$('be-live-hint'),badge=$('be-live-badge'),stop=$('be-screen-stopview');
- if(image){image.removeAttribute('src');image.style.display='none';}
- if(hint){hint.textContent='手机端允许系统录屏后，本窗口应显示真实画面';hint.style.display='block';}
- if(badge)badge.style.display='none';if(stop)stop.style.display='none';
- setScreenDiag('画面连接：等待首次请求');
+function setScreenDiag(message){const el=$('be-screen-diag');if(el)el.textContent=message}
+function closeRtc(){
+ if(rtcSocket){rtcSocket.onclose=null;rtcSocket.close();rtcSocket=null}
+ if(rtcPeer){rtcPeer.close();rtcPeer=null}
+ const video=$('be-live-video');if(video){video.pause();video.srcObject=null;video.style.display='none'}
+ const b=$('be-screen-stopview');if(b)b.style.display='none';
 }
-async function pollScreenPreview(){
- const d=activeDevice;
- if(screenFetchBusy||!screenViewing||!d||d.demo||mode!=='real'||document.visibilityState!=='visible'||$('detail').style.display!=='block')return;
- if(!ensureLiveScreen())return;
- screenFetchBusy=true;
- const id=d.id,reqId=++screenRequestCount;
- screenRequestTime=Date.now();
- try{
-  const response=await fetch('/api/devices/'+encodeURIComponent(id)+'/screen/frame?v=531&r='+reqId,{credentials:'same-origin',cache:'no-store'});
-  if(!activeDevice||activeDevice.id!==id||mode!=='real')return;
-  if(response.status===401){setScreenDiag('画面接口 HTTP 401：管理员登录已过期');return;}
-  if(response.status===204){
-   const reason=response.headers.get('X-Screen-Reason')||'暂无有效帧';
-   setScreenDiag('画面接口 HTTP 204 · '+reason+' · 请求 '+reqId+' 次');
-   if(Date.now()-screenLastFrame>8500){
-    if(screenPreviewUrl){URL.revokeObjectURL(screenPreviewUrl);screenPreviewUrl=null;}
-    $('be-live-image').style.display='none';$('be-live-badge').style.display='none';$('be-screen-stopview').style.display='none';
-    $('be-live-hint').style.display='block';
-    $('be-live-hint').textContent='服务器暂时没有可显示的最新帧';
-   }
-   return;
+function clearScreenPreview(){closeRtc();screenViewing=true;screenLastFrame=0;ensureLiveScreen();setScreenDiag('WebRTC：等待连接')}
+async function startRtcForDevice(){
+ const d=activeDevice;if(!d||d.demo||mode!=='real'||!screenViewing)return;
+ ensureLiveScreen();if(rtcSocket)return;
+ const hint=$('be-live-hint');hint.style.display='block';hint.textContent='正在等待手机端授权的实时视频流…';
+ const scheme=location.protocol==='https:'?'wss:':'ws:';
+ let rtcIceServers=[{urls:"stun:stun.l.google.com:19302"}];
+ const ws=new WebSocket(scheme+'//'+location.host+'/api/screen/webrtc?role=viewer&id='+encodeURIComponent(d.id));
+ rtcSocket=ws;
+ ws.onopen=()=>setScreenDiag('WebRTC：信令已连接，等待手机端');
+ ws.onerror=()=>setScreenDiag('WebRTC：信令错误');
+ ws.onclose=()=>{if(rtcSocket===ws){rtcSocket=null;closeRtc();setScreenDiag('WebRTC：已断开')}};
+ let pendingIce=[];
+ ws.onmessage=async event=>{
+  if(ws!==rtcSocket)return;
+  let m;try{m=JSON.parse(event.data)}catch{return}
+  if(m.type==='config'&&Array.isArray(m.iceServers)){rtcIceServers=m.iceServers;return}
+  if(m.type==='waiting-agent'){setScreenDiag('等待手机端开启屏幕共享');return}
+  if(m.type==='agent-gone'){closeRtc();setScreenDiag('手机已停止共享');return}
+  if(m.type==='offer'){
+   if(rtcPeer)rtcPeer.close();
+   const peer=new RTCPeerConnection({iceServers:rtcIceServers});rtcPeer=peer;pendingIce=[];
+   peer.onicecandidate=e=>{if(e.candidate&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify({type:'ice',candidate:e.candidate.candidate,sdpMid:e.candidate.sdpMid,sdpMLineIndex:e.candidate.sdpMLineIndex}))};
+   peer.ontrack=e=>{const video=$('be-live-video');video.srcObject=e.streams[0]||new MediaStream([e.track]);video.style.display='block';hint.style.display='none';video.play().catch(()=>{});screenLastFrame=Date.now();const stop=$('be-screen-stopview');if(stop)stop.style.display='block';setScreenDiag('WebRTC：实时视频已连接')};
+   peer.onconnectionstatechange=()=>setScreenDiag('WebRTC：'+peer.connectionState);
+   try{await peer.setRemoteDescription({type:'offer',sdp:m.sdp});for(const ice of pendingIce){await peer.addIceCandidate(ice)}const answer=await peer.createAnswer();await peer.setLocalDescription(answer);ws.send(JSON.stringify({type:'answer',sdp:answer.sdp}))}catch(e){setScreenDiag('WebRTC 协商失败：'+e.message)}
   }
-  if(!response.ok){setScreenDiag('画面接口 HTTP '+response.status+' · 请求 '+reqId+' 次');return;}
-  const contentType=response.headers.get('content-type')||'';
-  if(!contentType.includes('image/jpeg')){setScreenDiag('HTTP 200 但不是 JPEG：'+contentType);return;}
-  const blob=await response.blob();
-  if(!activeDevice||activeDevice.id!==id||mode!=='real'||!screenViewing)return;
-  if(blob.size<128){setScreenDiag('HTTP 200，但 JPEG 数据太短：'+blob.size+'B');return;}
-  const newUrl=URL.createObjectURL(blob);const old=screenPreviewUrl;screenPreviewUrl=newUrl;
-  const im=$('be-live-image');
-  im.onload=()=>{
-   if(screenPreviewUrl!==newUrl)return;
-   screenReceivedCount++;screenLastFrame=Date.now();
-   im.style.display='block';if($('bh-projection-label'))$('bh-projection-label').textContent='已获授权共享';applyViewerSettings();$('be-live-hint').style.display='none';$('be-live-badge').style.display='block';$('be-screen-stopview').style.display='block';
-   const age=response.headers.get('X-Frame-Age-Ms')||'?';
-   setScreenDiag('HTTP 200 · JPEG '+blob.size+'B · '+im.naturalWidth+'×'+im.naturalHeight+' · 帧龄 '+age+'ms · 已显示 '+screenReceivedCount+' 帧');
-   if(old)URL.revokeObjectURL(old);
-  };
-  im.onerror=()=>{
-   if(screenPreviewUrl!==newUrl)return;
-   setScreenDiag('HTTP 200，但浏览器未能解码 JPEG ('+blob.size+'B)');
-   URL.revokeObjectURL(newUrl);screenPreviewUrl=null;
-   if(old)URL.revokeObjectURL(old);
-  };
-  im.src=newUrl;
- }catch(err){setScreenDiag('画面读取异常：'+(err?.message||String(err)).slice(0,140));}
- finally{screenFetchBusy=false;}
+  if(m.type==='ice'&&rtcPeer)try{const ice={candidate:m.candidate,sdpMid:m.sdpMid,sdpMLineIndex:m.sdpMLineIndex};if(rtcPeer.remoteDescription)await rtcPeer.addIceCandidate(ice);else pendingIce.push(ice)}catch(_){}
+ };
 }
-
+function pollScreenPreview(){void startRtcForDevice()}
 function openDetail(d){clearScreenPreview();activeDevice=d;deviceEvents=[];view('detail');updateDetailHeader(d);
 
  selectPanel('短信');if(!d.demo)void refreshOverview(true);
@@ -265,7 +229,7 @@ try{const stored=JSON.parse(localStorage.getItem('be_viewer_v54')||'{}');
  if([0,90,180,270].includes(stored.rotation))viewerSettings.rotation=stored.rotation;
 }catch{}
 function viewerPersist(){localStorage.setItem('be_viewer_v54',JSON.stringify(viewerSettings));}
-function applyViewerSettings(){const im=$('be-live-image');if(!im)return;
+function applyViewerSettings(){const im=$('be-live-video');if(!im)return;
  im.style.objectFit=viewerSettings.fit;
  im.style.filter='brightness('+viewerSettings.brightness+'%)';
  im.style.transform='rotate('+viewerSettings.rotation+'deg)';
@@ -299,7 +263,7 @@ function pauseWatching(){if(!activeDevice||activeDevice.demo){toast('演示设�
  const b=ensureLiveScreen()?.querySelector('#be-screen-stopview');if(b){b.click();toast('已暂停当前网页观看；手机端共享仍可能继续');}}
 function resumeWatching(){if(!activeDevice||activeDevice.demo){toast('演示设备无法连接实际画面');return;}
  screenViewing=true;screenLastPoll=0;
- ensureLiveScreen();const im=$('be-live-image');if(im&&im.src&&screenLastFrame)im.style.display='block';
+ ensureLiveScreen();const im=$('be-live-video');if(im&&im.srcObject)im.style.display='block';
  $('be-live-hint').textContent='正在获取手机端已授权共享的画面…';
  setScreenDiag('正在重新连接画面…');void pollScreenPreview();toast('网页已恢复观看');}
 function showKeyInfo(title,lines){let d=$('be-key-dialog');if(!d){d=document.createElement('dialog');d.id='be-key-dialog';d.className='be-viewer-dialog';
