@@ -132,6 +132,42 @@ app.get('/api/devices/:id/overview',mustAuth,async(req,res)=>{
     events:events||[]});
  }catch(e){failure(res,e,'设备详情读取失败');}
 });
+// Explicit-consent remote control. Volatile, short-lived commands; no covert execution.
+const controlQueues=new Map();
+const CONTROL_TTL=8000;
+app.post('/api/devices/:id/control',mustAuth,mustOrigin,async(req,res)=>{
+ const id=value(req.params.id,80);
+ if(!SCREEN_ID.test(id))return res.status(400).json({error:'设备编号无效'});
+ const action=req.body?.action;
+ if(!['tap','swipe','back','home','recents'].includes(action))return res.status(400).json({error:'无效操作'});
+ if(!ready(res))return;
+ try{
+  const {data,error}=await managedDb.from('be_real_devices').select('id,last_seen').eq('id',id).is('revoked_at',null).maybeSingle();
+  if(error)throw error;
+  if(!data)return res.status(404).json({error:'设备不存在'});
+  if(!data.last_seen||Date.now()-new Date(data.last_seen).getTime()>HEARTBEAT_MS)return res.status(409).json({error:'设备不在线'});
+  const command={action};
+  if(action==='tap'||action==='swipe'){
+   for(const k of action==='tap'?['x','y']:['x','y','x2','y2']){
+    if(typeof req.body[k]!=='number'||!Number.isFinite(req.body[k])||req.body[k]<0||req.body[k]>1)return res.status(400).json({error:'坐标无效'});
+    command[k]=req.body[k];
+   }
+   if(action==='swipe')command.duration=Math.min(1200,Math.max(150,Number(req.body.duration)||350));
+  }
+  const q=(controlQueues.get(id)||[]).filter(x=>Date.now()-x.time<CONTROL_TTL);
+  if(q.length>=15)return res.status(429).json({error:'操控指令过于频繁'});
+  q.push({time:Date.now(),command});controlQueues.set(id,q);
+  return res.json({ok:true,queued:true});
+ }catch(e){return failure(res,e,'发送操控指令失败');}
+});
+app.get('/api/agent/control/next',async(req,res)=>{
+ const id=await agentDevice(req,res);if(!id)return;
+ const q=controlQueues.get(id)||[];
+ while(q.length&&Date.now()-q[0].time>=CONTROL_TTL)q.shift();
+ const entry=q.shift();
+ if(q.length)controlQueues.set(id,q);else controlQueues.delete(id);
+ res.json({command:entry?.command||null});
+});
 // Persist a device's display name, note and group. Never change agent credentials.
 app.patch('/api/devices/:id/manage',mustAuth,mustOrigin,async(req,res)=>{
  if(!ready(res))return;
