@@ -3,6 +3,8 @@
 const express = require('express');
 const crypto = require('crypto');
 const path = require('path');
+const http = require('http');
+const {WebSocketServer, WebSocket} = require('ws');
 const {createClient} = require('@supabase/supabase-js');
 
 const app = express();
@@ -284,4 +286,67 @@ app.get('/app.js',mustAuth,(_req,res)=>res.type('application/javascript').sendFi
 app.get('/',(req,res)=>{if(!authorized(req))return res.redirect('/login');res.sendFile(path.join(__dirname,'public/index.html'));});
 app.get('/index.html',(_req,res)=>res.redirect('/'));
 app.use((_req,res)=>res.status(404).send('Not found'));
-app.listen(process.env.PORT||3000,'0.0.0.0',()=>console.log('Black Eagle remote manager V5.3.1 started'));
+const httpServer=http.createServer(app);
+const rtcSockets=new Map(); // deviceId -> {agent,viewers:Set}
+const rtcWs=new WebSocketServer({noServer:true,maxPayload:200000});
+function safeSend(ws,obj){if(ws?.readyState===WebSocket.OPEN)ws.send(JSON.stringify(obj));}
+function rtcIceConfig(){
+ const servers=[{urls:['stun:stun.l.google.com:19302']}];
+ const urls=(process.env.BE_TURN_URLS||'').split(',').map(s=>s.trim()).filter(Boolean);
+ if(urls.length&&process.env.BE_TURN_USERNAME&&process.env.BE_TURN_PASSWORD){
+  servers.push({urls,username:process.env.BE_TURN_USERNAME,credential:process.env.BE_TURN_PASSWORD});
+ }
+ return servers;
+}
+function rtcSession(id){let session=rtcSockets.get(id);if(!session){session={agent:null,viewers:new Set()};rtcSockets.set(id,session);}return session;}
+// WebSocket authentication is checked before upgrade. Never pass agent tokens in URLs.
+httpServer.on('upgrade',async(req,socket,head)=>{
+ try{
+  const url=new URL(req.url,'http://localhost');
+  if(url.pathname!=='/api/screen/webrtc'){socket.destroy();return;}
+  const id=url.searchParams.get('id')||'';const role=url.searchParams.get('role');
+  if(!SCREEN_ID.test(id)||!['agent','viewer'].includes(role)){socket.destroy();return;}
+  if(!managedDb){socket.destroy();return;}
+  if(role==='viewer'){
+   const origin=req.headers.origin;
+   if(!origin||new URL(origin).host!==req.headers.host||!authorized(req)){socket.destroy();return;}
+   const {data,error}=await managedDb.from('be_real_devices').select('id').eq('id',id).is('revoked_at',null).maybeSingle();
+   if(error||!data){socket.destroy();return;}
+  }else{
+   const m=/^Bearer (bea_[0-9a-f]{64})$/.exec(req.headers.authorization||'');
+   if(!m){socket.destroy();return;}
+   const {data,error}=await managedDb.from('be_real_devices').select('id').eq('id',id).eq('api_token_hash',tokenHash(m[1])).is('revoked_at',null).maybeSingle();
+   if(error||!data){socket.destroy();return;}
+  }
+  rtcWs.handleUpgrade(req,socket,head,ws=>rtcWs.emit('connection',ws,req,{id,role}));
+ }catch(e){socket.destroy();}
+});
+rtcWs.on('connection',(ws,req,{id,role})=>{
+ const session=rtcSession(id);
+ safeSend(ws,{type:'config',iceServers:rtcIceConfig()});
+ if(role==='agent'){
+  if(session.agent&&session.agent!==ws)session.agent.close(1000,'新的手机共享会话');
+  session.agent=ws;
+  for(const viewer of session.viewers)safeSend(viewer,{type:'agent-ready'});
+  if(session.viewers.size)safeSend(ws,{type:'viewer-ready'});
+ }else{
+  if(session.viewers.size>=1){ws.close(1008,'每台设备目前仅支持1个观看者');return;}
+  session.viewers.add(ws);
+  if(session.agent)safeSend(session.agent,{type:'viewer-ready'});
+  safeSend(ws,{type:session.agent?'agent-ready':'waiting-agent'});
+ }
+ ws.on('message',raw=>{
+  let msg;try{msg=JSON.parse(String(raw));}catch{return;}
+  if(!['offer','answer','ice','restart'].includes(msg.type))return;
+  if(JSON.stringify(msg).length>160000)return;
+  if(role==='agent')for(const viewer of session.viewers)safeSend(viewer,msg);
+  else safeSend(session.agent,msg);
+ });
+ ws.on('close',()=>{
+  if(role==='agent'&&session.agent===ws){session.agent=null;for(const viewer of session.viewers)safeSend(viewer,{type:'agent-gone'});}
+  if(role==='viewer'){session.viewers.delete(ws);safeSend(session.agent,{type:'viewer-gone'});}
+  if(!session.agent&&session.viewers.size===0)rtcSockets.delete(id);
+ });
+});
+httpServer.listen(process.env.PORT||3000,'0.0.0.0',()=>console.log('Black Eagle WebRTC signaling started'));
+
