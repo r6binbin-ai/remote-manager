@@ -193,6 +193,91 @@
 #detail .quick.bh-quick{gap:8px!important}
 @media(max-height:700px){#detail .bh-commands-wrap{height:clamp(146px,28vh,182px)!important}#detail .commands{gap:3px!important}}
 </style>
+
+<style id="bh-control-refinement-20261015-v3">
+/* Latest six-by-eight button image: 4 + gutter + 4 columns, full 48 visible. */
+#detail .bh-commands-wrap{
+  flex:0 0 auto!important;height:clamp(154px,23.7vh,216px)!important;
+  padding:7px 9px!important;border-radius:10px!important;
+  background:#111720!important;border:1px solid #364052!important;
+  box-sizing:border-box!important;overflow:hidden!important
+}
+#detail .commands{
+  display:grid!important;width:100%!important;height:100%!important;
+  grid-template-columns:repeat(4,minmax(0,1fr)) 13px repeat(4,minmax(0,1fr))!important;
+  grid-template-rows:repeat(6,minmax(0,1fr))!important;
+  grid-auto-flow:row!important;grid-auto-rows:0!important;
+  gap:5px!important;padding:0!important;margin:0!important;overflow:hidden!important
+}
+#detail .commands button{
+  box-sizing:border-box!important;min-height:0!important;min-width:0!important;
+  width:100%!important;height:100%!important;
+  display:flex!important;gap:3px!important;align-items:center!important;justify-content:center!important;
+  font-size:clamp(9px,.64vw,11px)!important;font-weight:600!important;
+  line-height:1.06!important;letter-spacing:0!important;
+  border-radius:5px!important;padding:2px 3px!important;
+  white-space:normal!important;overflow:hidden!important;text-overflow:clip!important;
+  text-align:center!important
+}
+#detail .commands button:nth-child(8n + 5){grid-column:6!important}
+#detail .commands button.be-ready:not(.bh-state-on){background:#2772ed!important;color:#fff!important;border:1px solid #4183fa!important}
+#detail .commands button[disabled]{background:#131a23!important;color:#62758f!important;border:1px solid #313d4e!important;opacity:1!important}
+#detail .commands button.bh-state-on{background:#cb2438!important;border:1px solid #e64759!important;color:#fff!important}
+#detail .commands button:focus-visible{outline:2px solid #a6d4ff!important;outline-offset:-2px!important}
+#detail .commands button:not([disabled]):hover{filter:brightness(1.10)}
+#detail .commands button::before{display:inline-block;flex:none;font-size:11px;font-weight:normal;opacity:.9}
+/* Visual glyphs only. Actions remain bound to the existing safe handlers. */
+#detail .commands button:nth-child(1)::before{content:'◉'}
+#detail .commands button:nth-child(2)::before{content:'◐'}
+#detail .commands button:nth-child(3)::before{content:'◎'}
+#detail .commands button:nth-child(4)::before{content:'⚙'}
+#detail .commands button:nth-child(5)::before{content:'⚡'}
+#detail .commands button:nth-child(6)::before{content:'♢'}
+#detail .commands button:nth-child(7)::before{content:'◇'}
+#detail .commands button:nth-child(8)::before{content:'▣'}
+#detail .commands button:nth-child(9)::before{content:'⚿'}
+#detail .commands button:nth-child(10)::before{content:'♙'}
+#detail .commands button:nth-child(11)::before{content:'◔'}
+#detail .commands button:nth-child(12)::before{content:'⌁'}
+#detail .commands button:nth-child(13)::before{content:'◌'}
+#detail .commands button:nth-child(14)::before{content:'◎'}
+#detail .commands button:nth-child(15)::before{content:'♧'}
+#detail .commands button:nth-child(16)::before{content:'♧'}
+#detail .commands button:nth-child(17)::before{content:'▣'}
+#detail .commands button:nth-child(18)::before{content:'▤'}
+#detail .commands button:nth-child(19)::before{content:'▭'}
+#detail .commands button:nth-child(20)::before{content:'⊗'}
+#detail .commands button:nth-child(21)::before{content:'♧'}
+#detail .commands button:nth-child(22)::before{content:'✕'}
+#detail .commands button:nth-child(23)::before{content:'▣'}
+#detail .commands button:nth-child(24)::before{content:'⟳'}
+#detail .commands button:nth-child(25)::before{content:'◉'}
+#detail .commands button:nth-child(26)::before{content:'⟳'}
+#detail .commands button:nth-child(27)::before{content:'⚒'}
+#detail .commands button:nth-child(28)::before{content:'◉'}
+#detail .commands button:nth-child(29)::before{content:'⬡'}
+#detail .commands button:nth-child(30)::before{content:'▢'}
+#detail .commands button:nth-child(31)::before{content:'▷'}
+#detail .commands button:nth-child(32)::before{content:'#'}
+#detail .commands button:nth-child(33)::before{content:'⚙'}
+#detail .commands button:nth-child(34)::before{content:'▤'}
+#detail .commands button:nth-child(35)::before{content:'◇'}
+#detail .commands button:nth-child(36)::before{content:'⌁'}
+#detail .commands button:nth-child(37)::before{content:'∿'}
+#detail .commands button:nth-child(38)::before{content:'⚙'}
+#detail .commands button:nth-child(39)::before{content:'⟳'}
+#detail .commands button:nth-child(40)::before{content:'◉'}
+#detail .commands button:nth-child(41)::before{content:'▷'}
+#detail .commands button:nth-child(42)::before{content:'⟳'}
+#detail .commands button:nth-child(43)::before{content:'⌁'}
+#detail .commands button:nth-child(44)::before{content:'▭'}
+#detail .commands button:nth-child(45)::before{content:'♙'}
+#detail .commands button:nth-child(46)::before{content:'⚿'}
+#detail .commands button:nth-child(47)::before{content:'♢'}
+#detail .commands button:nth-child(48)::before{content:'⊘'}
+@media(max-height:730px){#detail .bh-commands-wrap{height:clamp(140px,28vh,194px)!important}#detail .commands{gap:3px!important}#detail .commands button{font-size:9px!important}}
+@media(max-width:1150px){#detail .commands{grid-template-columns:repeat(4,minmax(0,1fr)) 8px repeat(4,minmax(0,1fr))!important}#detail .commands button::before{font-size:9px}}
+</style>
 </head><body>
 <aside class="side" id="sidebar"><div class="brand"><span class="eagle">🦅</span>黑鹰安卓远程</div><button><span class="ico">⌂</span>控制台</button><div class="group-title">数据管理</div><button class="active"><span class="ico">▣</span>设备</button><button><span class="ico">▤</span>短信</button><button><span class="ico">♧</span>通知</button><button><span class="ico">▭</span>银行卡</button><button><span class="ico">▣</span>注入数据</button><div class="group-title">设备管理</div><button><span class="ico">♧</span>分组管理　⌄</button><button><span class="ico">⊘</span>黑名单</button><div class="group-title">注入策略</div><button><span class="ico">◎</span>应用设置</button><button><span class="ico">♢</span>注入模板</button><button><span class="ico">✣</span>AI制作模板</button><button><span class="ico">♧</span>短信通知规则</button><button><span class="ico">▤</span>银行检测配置</button><div class="group-title">构建分发</div><button><span class="ico">⚒</span>APK构建</button><div class="group-title">系统设置</div><button><span class="ico">♙</span>用户设置</button><button><span class="ico">♢</span>安全中心</button><button><span class="ico">▤</span>服务器状态</button><button><span class="ico">⌁</span>TURN节点</button><button><span class="ico">▤</span>Telegram设置</button><div class="bottom"><span class="dot">●</span> 系统运行中　v2.0</div></aside>
 <main class="viewport" id="main">
