@@ -176,7 +176,8 @@ function ensureRemoteNavigation(){
  const actions=[['↩','返回','back'],['⌂','主页','home'],['▢','最近任务','recents']];
  const bar=document.createElement('div');bar.id='be-remote-nav';
  bar.setAttribute('aria-label','远程手机系统导航');
- bar.style.cssText='display:inline-flex;gap:5px;align-items:center;margin-left:8px;flex-shrink:0';
+ quick.style.position='relative';
+ bar.style.cssText='display:flex;gap:8px;align-items:center;justify-content:center;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);margin:0;z-index:2;white-space:nowrap';
  for(const [glyph,label,action] of actions){
   const btn=document.createElement('button');
   btn.type='button';btn.className='tool';btn.textContent=glyph;
@@ -185,8 +186,7 @@ function ensureRemoteNavigation(){
   btn.addEventListener('click',e=>{e.preventDefault();void sendRemoteControl({action});});
   bar.appendChild(btn);
  }
- const left=quick.firstElementChild;
- if(left)left.appendChild(bar);else quick.prepend(bar);
+ quick.appendChild(bar);
 }
 function attachRemotePointer(){
  ensureRemoteNavigation();
