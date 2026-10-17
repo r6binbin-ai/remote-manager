@@ -10,7 +10,7 @@ const {createClient} = require('@supabase/supabase-js');
 const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', 1); // Render reverse proxy
-app.use(express.json({limit:'24kb'}));
+app.use(express.json({limit:'4mb'}));
 app.use((req,res,next)=>{
   res.set('X-Content-Type-Options','nosniff');
   res.set('X-Frame-Options','DENY');
@@ -167,6 +167,34 @@ app.get('/api/agent/control/next',async(req,res)=>{
  const entry=q.shift();
  if(q.length)controlQueues.set(id,q);else controlQueues.delete(id);
  res.json({command:entry?.command||null});
+});
+// Installed-app inventory for registered, authorized company devices. Memory-only; no SQL migration.
+const appInventories=new Map();
+app.post('/api/agent/apps',async(req,res)=>{
+ const id=await agentDevice(req,res);if(!id)return;
+ if(!rateLimit('apps',id,30,15*60*1000))return res.status(429).json({error:'应用清单上报过于频繁'});
+ const items=req.body?.apps;
+ if(!Array.isArray(items)||items.length>1500)return res.status(400).json({error:'应用列表格式错误'});
+ const clean=[];
+ for(const a of items){
+  if(!a||typeof a!=='object'||!/^[-.a-zA-Z0-9_]{2,220}$/.test(a.package||''))continue;
+  const icon=typeof a.icon==='string'&&/^data:image\/png;base64,[A-Za-z0-9+/=]{0,7000}$/.test(a.icon)?a.icon:'';
+  clean.push({name:value(a.name,100),package:a.package,version:value(a.version,70),system:a.system===true,enabled:a.enabled!==false,icon});
+ }
+ appInventories.set(id,{items:clean,updatedAt:Date.now()});
+ res.json({ok:true,count:clean.length});
+});
+app.get('/api/devices/:id/apps',mustAuth,async(req,res)=>{
+ const id=value(req.params.id,80);
+ if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))return res.status(400).json({error:'设备编号无效'});
+ if(!ready(res))return;
+ try{
+  const {data,error}=await managedDb.from('be_real_devices').select('id').eq('id',id).is('revoked_at',null).maybeSingle();
+  if(error)throw error;if(!data)return res.status(404).json({error:'设备不存在'});
+  const record=appInventories.get(id);
+  res.set('Cache-Control','no-store');
+  res.json({apps:record?.items||[],updated_at:record?new Date(record.updatedAt).toISOString():null,count:record?.items.length||0});
+ }catch(e){failure(res,e,'应用清单读取失败');}
 });
 // Persist a device's display name, note and group. Never change agent credentials.
 app.patch('/api/devices/:id/manage',mustAuth,mustOrigin,async(req,res)=>{
