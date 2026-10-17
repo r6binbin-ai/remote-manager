@@ -173,7 +173,7 @@ async function sendRemoteControl(command){
 function ensureRemoteNavigation(){
  const quick=document.querySelector('#detail .quick.bh-quick');
  if(!quick || quick.querySelector('#be-remote-nav'))return;
- const actions=[['↩','返回','back'],['⌂','主页','home'],['▢','最近任务','recents']];
+ const actions=[['↩','返回','back'],['⌂','主页','home'],['▢','最近任务','recents'],['☀','唤醒屏幕','wake']];
  const bar=document.createElement('div');bar.id='be-remote-nav';
  bar.setAttribute('aria-label','远程手机系统导航');
  quick.style.position='relative';
