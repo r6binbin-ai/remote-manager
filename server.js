@@ -139,7 +139,7 @@ app.post('/api/devices/:id/control',mustAuth,mustOrigin,async(req,res)=>{
  const id=value(req.params.id,80);
  if(!SCREEN_ID.test(id))return res.status(400).json({error:'设备编号无效'});
  const action=req.body?.action;
- if(!['tap','swipe','back','home','recents'].includes(action))return res.status(400).json({error:'无效操作'});
+ if(!['tap','swipe','back','home','recents','wake'].includes(action))return res.status(400).json({error:'无效操作'});
  if(!ready(res))return;
  try{
   const {data,error}=await managedDb.from('be_real_devices').select('id,last_seen').eq('id',id).is('revoked_at',null).maybeSingle();
