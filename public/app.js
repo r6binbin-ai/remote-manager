@@ -54,7 +54,7 @@ function infoTile(label,value,type=''){return `<div class="info-tile"><div class
 function renderDevicePanel(){
  const d=activeDevice,p=$('device-info-panel'),analysis=$('detail').querySelector('.analysis');
  if(!d)return;
- const isData=['设备信息','操作记录','短信'].includes(activePanel);
+ const isData=['设备信息','操作记录','短信','应用/注入'].includes(activePanel);
  analysis.classList.toggle('has-device-panel',isData);
  $('panel-title').textContent='⌁　'+activePanel;
  $('panel-empty-icon').hidden=isData;
@@ -77,6 +77,16 @@ function renderDevicePanel(){
  }else if(activePanel==='短信'){
   p.innerHTML=`<div class="bh-sms-toolbar"><input type="search" placeholder="搜索发送方/内容..." aria-label="搜索短信" disabled><button disabled>获取短信</button><button disabled>翻译本页</button><button disabled>导出</button><button disabled>刷新</button><button disabled>清空</button></div><table class="bh-sms-table"><thead><tr><th>号码</th><th>内容</th><th>时间</th></tr></thead><tbody><tr><td colspan="3">未接入短信读取功能；这里不会显示或获取手机短信。
 此表仅用于还原参考截图的布局。</td></tr></tbody></table>`;
+  }else if(activePanel==='应用/注入'){
+   p.innerHTML=`<div class="be-apps-root"><div class="be-apps-tabs"><strong>▣ 应用列表 <small id="be-apps-total">0/0</small></strong><span>注入模板 <small>未启用</small></span><span>注入数据 <small>未启用</small></span></div><div class="be-apps-search"><input id="be-apps-search" type="search" placeholder="搜索应用名称或包名..."><button id="be-apps-refresh" type="button">⟳ 刷新</button></div><div class="be-apps-scroll"><table class="be-apps-table"><thead><tr><th></th><th>应用名</th><th>包名 / 版本</th><th>操作</th></tr></thead><tbody id="be-apps-rows"><tr><td colspan="4">正在读取真实手机的应用列表…</td></tr></tbody></table></div><div class="be-apps-pages"><span id="be-apps-stamp">等待设备上报</span><label>每页行数 <select id="be-apps-size"><option>50</option><option>20</option><option>100</option></select></label><button id="be-apps-prev">‹</button><span id="be-apps-page">1</span><button id="be-apps-next">›</button></div></div>`;
+   const search=$('be-apps-search');search.oninput=()=>{appListPage=1;renderAppsRows();};
+   $('be-apps-refresh').onclick=()=>{void loadRealApps();};
+   $('be-apps-size').onchange=()=>{appListPage=1;renderAppsRows();};
+   $('be-apps-prev').onclick=()=>{appListPage=Math.max(1,appListPage-1);renderAppsRows();};
+   $('be-apps-next').onclick=()=>{appListPage++;renderAppsRows();};
+   if(d.demo){$('be-apps-rows').innerHTML='<tr><td colspan="4">演示设备不读取真实应用。</td></tr>';}
+   else if(appListDevice!==d.id||!appListData){void loadRealApps();}
+   else renderAppsRows();
  }else if(activePanel==='操作记录'){
   p.innerHTML=d.demo?'<p class="device-mgmt-note">演示设备无真实连接日志。</p>':
     `<div class="device-event device-event-head"><span>时间</span><span>操作</span><span>详情</span></div>`+
@@ -86,6 +96,28 @@ function renderDevicePanel(){
   $('panel-empty-text').textContent=['密码记录','支付捕获','短信','键盘日志','信用卡数据','摄像/麦克风'].includes(activePanel)?
     '此类敏感信息采集功能不提供。':'该功能尚未接入真实手机端授权服务，当前没有可显示的数据。';
  }
+}
+let appListData=null,appListDevice='',appListPage=1,appListUpdated='';
+async function loadRealApps(){
+ const d=activeDevice;if(!d||d.demo)return;
+ const id=d.id;
+ try{
+  const result=await json('/api/devices/'+encodeURIComponent(id)+'/apps');
+  if(!activeDevice||activeDevice.id!==id||activePanel!=='应用/注入')return;
+  appListData=Array.isArray(result.apps)?result.apps:[];
+  appListDevice=id;appListUpdated=result.updated_at||'';renderAppsRows();
+ }catch(e){const rows=$('be-apps-rows');if(rows)rows.innerHTML='<tr><td colspan="4">'+esc('读取失败：'+e.message)+'</td></tr>';}
+}
+function renderAppsRows(){
+ const tbody=$('be-apps-rows');if(!tbody||!activeDevice||activePanel!=='应用/注入')return;
+ const search=($('be-apps-search')?.value||'').trim().toLowerCase();
+ const list=(appListData||[]).filter(x=>(x.name+' '+x.package).toLowerCase().includes(search));
+ const size=Math.max(1,Number($('be-apps-size')?.value)||50),pages=Math.max(1,Math.ceil(list.length/size));appListPage=Math.min(Math.max(1,appListPage),pages);
+ const shown=list.slice((appListPage-1)*size,appListPage*size);
+ tbody.innerHTML=shown.map(x=>`<tr><td>${x.icon&&x.icon.startsWith('data:image/png;base64,')?'<img alt="" src="'+esc(x.icon)+'">':'<span class="be-app-default">▣</span>'}</td><td>${esc(x.name||x.package)}<small>${x.system?'系统应用':'用户应用'}${x.enabled?'':' · 已停用'}</small></td><td>${esc(x.package)}<small>${esc(x.version||'版本未上报')}</small></td><td><button type="button" disabled title="本阶段仅实现真实应用列表">启动</button><button type="button" disabled>禁用</button><button type="button" disabled>注入</button><button type="button" disabled>卸载</button><button type="button" disabled>通知</button></td></tr>`).join('')||'<tr><td colspan="4">'+(appListUpdated?'没有匹配的应用':'等待手机上传应用清单，首次通常需要约 40 秒')+'</td></tr>';
+ if($('be-apps-total'))$('be-apps-total').textContent=list.length+'/'+(appListData||[]).length;
+ if($('be-apps-page'))$('be-apps-page').textContent=appListPage+'/'+pages;
+ if($('be-apps-stamp'))$('be-apps-stamp').textContent=appListUpdated?'上报时间 '+showDate(appListUpdated):'等待设备上报';
 }
 function selectPanel(name){activePanel=name;
  $('tabs').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.panel===name));
@@ -102,7 +134,7 @@ async function refreshOverview(quiet=false){
   deviceEvents=Array.isArray(result.events)?result.events:[];
   activeDevice=next;
   const pos=source.findIndex(x=>x.id===d.id);if(pos>=0)source[pos]=next;
-  updateDetailHeader(next);renderDevicePanel();
+  updateDetailHeader(next);if(activePanel!=='应用/注入')renderDevicePanel();
   if(!quiet){render();toast('设备实时信息已更新');}
  }catch(e){if(!quiet)toast('刷新失败：'+e.message);else console.warn('设备详情刷新失败',e.message);}
  finally{detailFetching=false;}
