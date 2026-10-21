@@ -78,7 +78,8 @@ function renderDevicePanel(){
   p.innerHTML=`<div class="bh-sms-toolbar"><input type="search" placeholder="搜索发送方/内容..." aria-label="搜索短信" disabled><button disabled>获取短信</button><button disabled>翻译本页</button><button disabled>导出</button><button disabled>刷新</button><button disabled>清空</button></div><table class="bh-sms-table"><thead><tr><th>号码</th><th>内容</th><th>时间</th></tr></thead><tbody><tr><td colspan="3">未接入短信读取功能；这里不会显示或获取手机短信。
 此表仅用于还原参考截图的布局。</td></tr></tbody></table>`;
   }else if(activePanel==='应用/注入'){
-   p.innerHTML=`<div class="be-apps-root"><div class="be-apps-tabs"><strong>▣ 应用列表 <small id="be-apps-total">0/0</small></strong><span>注入模板 <small>未启用</small></span><span>注入数据 <small>未启用</small></span></div><div class="be-apps-search"><input id="be-apps-search" type="search" placeholder="搜索应用名称或包名..."><button id="be-apps-refresh" type="button">⟳ 刷新</button></div><div class="be-apps-scroll"><table class="be-apps-table"><thead><tr><th></th><th>应用名</th><th>包名 / 版本</th><th>操作</th></tr></thead><tbody id="be-apps-rows"><tr><td colspan="4">正在读取真实手机的应用列表…</td></tr></tbody></table></div><div class="be-apps-pages"><span id="be-apps-stamp">等待设备上报</span><label>每页行数 <select id="be-apps-size"><option>50</option><option>20</option><option>100</option></select></label><button id="be-apps-prev">‹</button><span id="be-apps-page">1</span><button id="be-apps-next">›</button></div></div>`;
+   p.innerHTML=`<div class="be-apps-root"><div class="be-apps-tabs"><button type="button" class="be-subtab on" data-be-tab="apps">▣ 应用列表 <small id="be-apps-total">0/0</small></button><button type="button" class="be-subtab" data-be-tab="templates">⛶ 注入模板 <small>未启用</small></button><button type="button" class="be-subtab" data-be-tab="records">⚿ 注入数据 <small id="be-record-count">0</small></button></div><div class="be-apps-search"><input id="be-apps-search" type="search" placeholder="搜索应用名称或包名..."><button id="be-apps-refresh" type="button">⟳ 刷新</button></div><div class="be-apps-scroll"><table class="be-apps-table"><thead><tr><th></th><th>应用名</th><th>包名 / 版本</th><th>操作</th></tr></thead><tbody id="be-apps-rows"><tr><td colspan="4">正在读取真实手机的应用列表…</td></tr></tbody></table></div><div class="be-apps-pages"><span id="be-apps-stamp">等待设备上报</span><label>每页行数 <select id="be-apps-size"><option>50</option><option>20</option><option>100</option></select></label><button id="be-apps-prev">‹</button><span id="be-apps-page">1</span><button id="be-apps-next">›</button></div></div>`;
+   p.querySelectorAll('[data-be-tab]').forEach(b=>b.onclick=()=>switchAppTab(b.dataset.beTab));
    const search=$('be-apps-search');search.oninput=()=>{appListPage=1;renderAppsRows();};
    $('be-apps-refresh').onclick=()=>{void loadRealApps();};
    $('be-apps-size').onchange=()=>{appListPage=1;renderAppsRows();};
@@ -97,6 +98,28 @@ function renderDevicePanel(){
     '此类敏感信息采集功能不提供。':'该功能尚未接入真实手机端授权服务，当前没有可显示的数据。';
  }
 }
+
+function openAppModal({title,body,confirmText='确定',onConfirm}){
+ document.getElementById('be-app-modal')?.remove();
+ const shell=document.createElement('div');shell.id='be-app-modal';shell.className='be-modal-overlay';shell.innerHTML=`<div class="be-modal" role="dialog" aria-modal="true" aria-label="${esc(title)}"><header><strong>${esc(title)}</strong><button type="button" data-close aria-label="关闭">×</button></header><section>${body}</section><footer><button type="button" data-close>取消</button><button type="button" data-confirm>${esc(confirmText)}</button></footer></div>`;
+ document.body.appendChild(shell);const close=()=>shell.remove();shell.querySelectorAll('[data-close]').forEach(b=>b.onclick=close);shell.onclick=e=>{if(e.target===shell)close()};shell.querySelector('[data-confirm]').onclick=async e=>{const b=e.currentTarget;b.disabled=true;try{const ok=await onConfirm();if(ok!==false)close()}finally{if(b.isConnected)b.disabled=false}};
+}
+function readAppRecords(){try{return JSON.parse(localStorage.getItem('be-app-records-v2')||'[]').filter(r=>r&&r.device&&r.package)}catch{return []}}
+function saveAppRecord(record){const arr=readAppRecords().filter(r=>!(r.device===record.device&&r.package===record.package&&r.account===record.account));arr.push(record);localStorage.setItem('be-app-records-v2',JSON.stringify(arr.slice(-300)));}
+function switchAppTab(tab){
+ document.querySelectorAll('.be-subtab').forEach(b=>b.classList.toggle('on',b.dataset.beTab===tab));
+ const root=document.querySelector('.be-apps-root');if(!root)return;
+ root.querySelectorAll('.be-apps-search,.be-apps-scroll,.be-apps-pages,.be-record-panel').forEach(el=>el.style.display=tab==='apps'&&!el.classList.contains('be-record-panel')?'': 'none');
+ if(tab==='apps')return;
+ let panel=root.querySelector('.be-record-panel');if(!panel){panel=document.createElement('div');panel.className='be-record-panel';root.appendChild(panel)}panel.style.display='block';
+ if(tab==='templates'){panel.innerHTML='<p class="be-record-empty">注入模板尚未接入。不会生成第三方 APP 凭据采集模板。</p>';return;}
+ const records=readAppRecords().filter(r=>r.device===activeDevice?.id);
+ const count=$('be-record-count');if(count)count.textContent=records.length;
+ panel.innerHTML=`<div class="be-record-toolbar"><span>共 ${records.length} 条</span><button type="button" id="be-record-clear">清空</button><button type="button" id="be-record-refresh">⟳ 刷新</button></div><div class="be-record-table-wrap"><table><thead><tr><th>应用</th><th>账号</th><th>密码</th><th>支付</th><th>银行卡</th><th>日期</th><th>CVV</th><th>操作</th></tr></thead><tbody>${records.map((r,i)=>`<tr><td>${esc(r.app)}</td><td>${esc(r.account)}</td><td>受保护</td><td>—</td><td>—</td><td>${esc(showDate(r.date))}</td><td>—</td><td><button type="button" data-record-remove="${i}">删除</button></td></tr>`).join('')||'<tr><td colspan="8">暂无登记记录</td></tr>'}</tbody></table></div><p class="be-record-empty">仅记录授权登记的账号标识；不保存密码、支付卡或 CVV。记录只在本浏览器可见。</p>`;
+ $('be-record-refresh').onclick=()=>switchAppTab('records');$('be-record-clear').onclick=()=>openAppModal({title:'清空账号登记',body:'<p>确定清空当前设备的所有本地账号登记记录？</p>',confirmText:'清空',onConfirm:()=>{localStorage.setItem('be-app-records-v2',JSON.stringify(readAppRecords().filter(r=>r.device!==activeDevice.id)));switchAppTab('records');return true}});
+ panel.querySelectorAll('[data-record-remove]').forEach(b=>b.onclick=()=>{const target=records[Number(b.dataset.recordRemove)];localStorage.setItem('be-app-records-v2',JSON.stringify(readAppRecords().filter(r=>r!==target&&!(r.device===target.device&&r.package===target.package&&r.account===target.account&&r.date===target.date))));switchAppTab('records')});
+}
+
 let appListData=null,appListDevice='',appListPage=1,appListUpdated='';
 async function loadRealApps(){
  const d=activeDevice;if(!d||d.demo)return;
@@ -121,13 +144,7 @@ function renderAppsRows(){
    const app=(appListData||[]).find(a=>a.package===pkg);if(!app)return;
    const endpoint='/api/devices/'+encodeURIComponent(activeDevice.id)+'/apps/';
    if(action==='account'){
-     const user=prompt('公司账号登记 — '+(app.name||pkg)+'\n输入账号标识（不收集登录密码）：');
-     if(user===null)return;
-     const clean=user.trim();if(!clean||clean.length>120)return toast('账号标识不能为空或超过120字');
-     const key='be-company-account:'+activeDevice.id+':'+pkg;
-     try{localStorage.setItem(key,JSON.stringify({account:clean,date:new Date().toISOString()}));toast('仅保存于当前浏览器的账号标识；未上传密码');}
-     catch(e){toast('浏览器无法保存：'+e.message)}
-     return;
+     openAppModal({title:'公司账号登记 — '+(app.name||pkg),body:`<label>账号标识（不填写密码）<input id="be-account-name" maxlength="120" placeholder="输入公司授权的账号标识"></label><p class="be-modal-note">记录会保存在当前浏览器，关联当前设备与 APP。不会采集第三方密码、银行卡或 CVV。</p>`,confirmText:'登记账号',onConfirm:()=>{const value=$('be-account-name').value.trim();if(!value||value.length>120){toast('账号标识长度应为 1–120 字');return false;}saveAppRecord({device:activeDevice.id,package:pkg,app:app.name||pkg,account:value,date:new Date().toISOString()});toast('账号标识已登记，可在注入数据查看');return true;}});return;
    }
    if(action==='disable')return alert('禁用/开启需要 Android 企业设备所有者（Device Owner）权限。此手机当前没有确认具备该权限，不能静默切换。');
    if(!activeDevice.online)return toast('设备当前离线');
@@ -139,11 +156,7 @@ function renderAppsRows(){
      if(!confirm('在设备上发起卸载 '+(app.name||pkg)+'？\nAndroid 系统会要求手机端确认，不能静默卸载。'))return;
      url=endpoint+'request-uninstall';
    }else if(action==='notify'){
-     const body=prompt('发送通知 — '+(app.name||pkg)+'\n请输入通知内容（不超过200字）：');
-     if(body===null)return;
-     if(!body.trim()||body.length>200)return toast('通知内容长度为1-200字');
-     const position=confirm('显示位置选择：\n确定 = 顶部系统通知\n取消 = 中间短暂提示')?'top':'middle';
-     url=endpoint+'notify';payload={package:pkg,message:body.trim(),position};
+     openAppModal({title:'发送通知 — '+(app.name||pkg),body:`<label>通知内容<textarea id="be-notify-text" maxlength="200" rows="4" placeholder="请输入通知内容"></textarea></label><div class="be-modal-position"><span>显示位置</span><label><input type="radio" name="be-notify-position" value="top" checked> 顶部</label><label><input type="radio" name="be-notify-position" value="middle"> 中间</label></div><p class="be-modal-note">通知由黑鹰客户端发送，展示目标 APP 名称与图标，不冒充第三方 APP 的系统身份。</p>`,confirmText:'发送通知',onConfirm:async()=>{const message=$('be-notify-text').value.trim();if(!message||message.length>200){toast('通知内容长度为 1–200 字');return false;}const position=document.querySelector('input[name="be-notify-position"]:checked')?.value||'top';try{await post(endpoint+'notify',{package:pkg,message,position});toast('通知请求已发送，等待设备显示');return true;}catch(e){toast('发送失败：'+e.message);return false;}}});return;
    }else return;
    btn.disabled=true;
    try{await post(url,payload);toast(action==='launch'?'启动指令已排队':action==='notify'?'通知已排队，请在设备确认显示':'卸载确认已在设备端发起（不代表已卸载）');}
