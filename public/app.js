@@ -180,6 +180,7 @@ async function startRtcForDevice(){
  ws.onmessage=async event=>{
   if(ws!==rtcSocket)return;
   let m;try{m=JSON.parse(event.data)}catch{return}
+  if(m.type==='error'){setScreenDiag('WebRTC：'+(m.message||'TURN 凭据不可用'));hint.style.display='block';hint.textContent='无法建立投屏连接：'+(m.message||'请检查 TURN 服务');return}
   if(m.type==='config'&&Array.isArray(m.iceServers)){rtcIceServers=m.iceServers;return}
   if(m.type==='waiting-agent'){setScreenDiag('等待手机端开启屏幕共享');return}
   if(m.type==='agent-gone'){closeRtc();setScreenDiag('手机已停止共享');return}
