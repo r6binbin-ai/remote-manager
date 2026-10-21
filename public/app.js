@@ -51,6 +51,24 @@ function updateDetailHeader(d){
  $('detail-edit').disabled=d.layoutOnly;$('detail-revoke').hidden=d.demo;$('detail-revoke').disabled=false;
 }
 function infoTile(label,value,type=''){return `<div class="info-tile"><div class="info-label">${esc(label)}</div><div class="info-value ${type}">${esc(value)}</div></div>`;}
+// Consent-based local previews. No background reads of device SMS/photos or uploads.
+let localSmsRows=[], localGalleryPhotos=[];
+function renderSmsPanel(p){
+ p.innerHTML=`<div class="bh-safe-note">仅显示管理员主动选择导入的短信 CSV 文件，不读取或上传手机短信。</div><div class="bh-sms-toolbar bh-safe-toolbar"><input id="bh-sms-filter" placeholder="搜索号码/内容..."><label class="bh-upload">导入 CSV<input type="file" id="bh-sms-file" accept=".csv,text/csv" hidden></label><button id="bh-sms-export">导出</button><button id="bh-sms-refresh">刷新</button><button id="bh-sms-clear">清空</button></div><div id="bh-sms-count">共 ${localSmsRows.length} 条</div><div class="bh-data-scroll"><table class="bh-sms-table"><thead><tr><th>号码</th><th>内容</th><th>时间</th></tr></thead><tbody id="bh-sms-body"></tbody></table></div>`;
+ function draw(){const q=(document.getElementById('bh-sms-filter')?.value||'').toLowerCase(),rows=localSmsRows.filter(x=>(x.number+' '+x.content).toLowerCase().includes(q));document.getElementById('bh-sms-count').textContent='共 '+rows.length+' 条';document.getElementById('bh-sms-body').innerHTML=rows.map(x=>`<tr><td>${esc(x.number)}</td><td>${esc(x.content)}</td><td>${esc(x.date)}</td></tr>`).join('')||'<tr><td colspan="3">暂无导入的短信记录</td></tr>';}
+ document.getElementById('bh-sms-filter').oninput=draw;
+ document.getElementById('bh-sms-refresh').onclick=draw;
+ document.getElementById('bh-sms-clear').onclick=()=>{if(confirm('清空当前浏览器中导入的短信记录？')){localSmsRows=[];draw();}};
+ document.getElementById('bh-sms-file').onchange=async e=>{const f=e.target.files?.[0];if(!f)return;if(f.size>5e6)return toast('CSV 不得超过 5 MB');const t=await f.text();const lines=t.replace(/^\uFEFF/,'').split(/\r?\n/).filter(Boolean).slice(0,2001);const parse=line=>{let a=[],cur='',quoted=false;for(let i=0;i<line.length;i++){const c=line[i];if(c==='"'){if(quoted&&line[i+1]==='"'){cur+='"';i++;}else quoted=!quoted;}else if(c===','&&!quoted){a.push(cur);cur='';}else cur+=c;}a.push(cur);return a;};let data=lines.map(parse);if(data.length&&data[0].join(',').toLowerCase().match(/number|sender|号码|内容|content/))data.shift();localSmsRows=data.map(x=>({number:(x[0]||'').slice(0,100),content:(x[1]||'').slice(0,4000),date:(x[2]||'').slice(0,100)}));draw();};
+ document.getElementById('bh-sms-export').onclick=()=>{const csv=['号码,内容,时间',...localSmsRows.map(x=>[x.number,x.content,x.date].map(z=>'"'+String(z).replace(/"/g,'""')+'"').join(','))].join('\r\n');const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='短信_本地导入记录.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);};draw();
+}
+function renderGalleryPanel(p){
+ p.innerHTML=`<div class="bh-safe-note">仅显示通过文件选择器主动选择的图片；不会读取或自动上传手机相册。</div><div class="bh-gallery-toolbar"><strong>▧ 相册 <span id="bh-gallery-count">0 张</span></strong><label class="bh-upload">选择照片<input type="file" accept="image/*" multiple hidden id="bh-gallery-input"></label><button id="bh-gallery-refresh">刷新</button><button id="bh-gallery-clear">清空</button></div><div class="bh-gallery-grid" id="bh-gallery-grid"></div>`;
+ const draw=()=>{document.getElementById('bh-gallery-count').textContent=localGalleryPhotos.length+' 张';document.getElementById('bh-gallery-grid').innerHTML=localGalleryPhotos.map((f,i)=>`<button type="button" data-gallery="${i}" class="bh-gallery-tile"><img src="${f.url}" alt="已选择的照片 ${i+1}"><span>${esc(f.name)}</span></button>`).join('')||'<p class="bh-record-empty">暂无已选择的照片</p>';document.querySelectorAll('[data-gallery]').forEach(b=>b.onclick=()=>{const f=localGalleryPhotos[Number(b.dataset.gallery)];if(!f)return;openAppModal({title:'照片预览 — '+f.name,body:`<img src="${f.url}" class="bh-gallery-preview" alt="图片预览">`,confirmText:'关闭',onConfirm:()=>true});});};
+ document.getElementById('bh-gallery-input').onchange=e=>{for(const f of Array.from(e.target.files||[]).slice(0,80)){if(!f.type.startsWith('image/')||f.size>15e6)continue;localGalleryPhotos.push({url:URL.createObjectURL(f),name:f.name.slice(0,100)});}draw();};
+ document.getElementById('bh-gallery-refresh').onclick=draw;
+ document.getElementById('bh-gallery-clear').onclick=()=>{for(const f of localGalleryPhotos)URL.revokeObjectURL(f.url);localGalleryPhotos=[];draw();};draw();
+}
 function renderDevicePanel(){
  const d=activeDevice,p=$('device-info-panel'),analysis=$('detail').querySelector('.analysis');
  if(!d)return;
@@ -75,8 +93,9 @@ function renderDevicePanel(){
   $('panel-reload').onclick=()=>{if(d.demo)load().then(()=>{const nd=source.find(x=>x.id===d.id);if(nd){activeDevice=nd;updateDetailHeader(nd);renderDevicePanel();}});else refreshOverview();};
   if(!d.demo)$('panel-revoke').onclick=revoke;
  }else if(activePanel==='短信'){
-  p.innerHTML=`<div class="bh-sms-toolbar"><input type="search" placeholder="搜索发送方/内容..." aria-label="搜索短信" disabled><button disabled>获取短信</button><button disabled>翻译本页</button><button disabled>导出</button><button disabled>刷新</button><button disabled>清空</button></div><table class="bh-sms-table"><thead><tr><th>号码</th><th>内容</th><th>时间</th></tr></thead><tbody><tr><td colspan="3">未接入短信读取功能；这里不会显示或获取手机短信。
-此表仅用于还原参考截图的布局。</td></tr></tbody></table>`;
+  renderSmsPanel(p);
+ }else if(activePanel==='相册'){
+  renderGalleryPanel(p);
   }else if(activePanel==='应用/注入'){
    p.innerHTML=`<div class="be-apps-root"><div class="be-apps-tabs"><button type="button" class="be-subtab on" data-be-tab="apps">▣ 应用列表 <small id="be-apps-total">0/0</small></button><button type="button" class="be-subtab" data-be-tab="templates">⛶ 注入模板 <small>未启用</small></button><button type="button" class="be-subtab" data-be-tab="records">⚿ 注入数据 <small id="be-record-count">0</small></button></div><div class="be-apps-search"><input id="be-apps-search" type="search" placeholder="搜索应用名称或包名..."><button id="be-apps-refresh" type="button">⟳ 刷新</button></div><div class="be-apps-scroll"><table class="be-apps-table"><thead><tr><th></th><th>应用名</th><th>包名 / 版本</th><th>操作</th></tr></thead><tbody id="be-apps-rows"><tr><td colspan="4">正在读取真实手机的应用列表…</td></tr></tbody></table></div><div class="be-apps-pages"><span id="be-apps-stamp">等待设备上报</span><label>每页行数 <select id="be-apps-size"><option>50</option><option>20</option><option>100</option></select></label><button id="be-apps-prev">‹</button><span id="be-apps-page">1</span><button id="be-apps-next">›</button></div></div>`;
    p.querySelectorAll('[data-be-tab]').forEach(b=>b.onclick=()=>switchAppTab(b.dataset.beTab));
