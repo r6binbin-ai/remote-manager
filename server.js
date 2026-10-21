@@ -362,6 +362,53 @@ function rtcIceConfig(){
  }
  return servers;
 }
+// Baton issues short-lived ICE credentials. The bearer API key never leaves this server.
+// A single short cache keeps the same TURN configuration available to both peers.
+let batonIceCache=null;
+let batonIceInflight=null;
+async function getRtcIceConfig(){
+ const apiKey=(process.env.BATON_API_KEY||'').trim();
+ if(!apiKey)return rtcIceConfig(); // Preserve pre-existing fixed TURN configuration.
+ if(batonIceCache&&Date.now()<batonIceCache.until)return batonIceCache.servers;
+ if(batonIceInflight)return batonIceInflight;
+ batonIceInflight=(async()=>{
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),10000);
+  let response;
+  try{
+   response=await fetch('https://api.getbaton.io/v1/credentials',{
+    method:'POST',
+    headers:{'Authorization':`Bearer ${apiKey}`,'Content-Type':'application/json'},
+    body:JSON.stringify({ttl:3600,region:(process.env.BATON_REGION||'us-east').trim()}),
+    signal:controller.signal
+   });
+  }finally{clearTimeout(timeout);}
+  if(!response.ok){
+   // Only log status and a short, non-sensitive provider code. Never log TURN credentials or API keys.
+   let providerCode='unknown';
+   try{
+    const body=await response.json();
+    const code=body?.code??body?.error?.code??body?.error??body?.message;
+    if(typeof code==='string' && /^[a-zA-Z0-9_. -]{1,64}$/.test(code))providerCode=code;
+   }catch(_){}
+   throw new Error('Baton API HTTP '+response.status+' (provider code: '+providerCode+')');
+  }
+  const data=await response.json();
+  const iceServers=Array.isArray(data.iceServers)?data.iceServers:
+   Array.isArray(data?.data?.iceServers)?data.data.iceServers:null;
+  if(!iceServers||!iceServers.some(x=>{
+   const u=Array.isArray(x.urls)?x.urls:[x.urls];
+   return u.some(v=>typeof v==='string'&&/^(turn:|turns:)/i.test(v))&&
+     typeof x.username==='string'&&typeof x.credential==='string';
+  }))throw new Error('Baton ICE response has no valid TURN credentials');
+  // Refresh well before the requested one-hour TTL expires.
+  const servers=[{urls:['stun:stun.l.google.com:19302']},...iceServers];
+  batonIceCache={servers,until:Date.now()+40*60*1000};
+  console.info('[WebRTC] Baton TURN configuration ready; TURN server entries:',iceServers.length);
+  return servers;
+ })();
+ try{return await batonIceInflight;}finally{batonIceInflight=null;}
+}
 function rtcSession(id){let session=rtcSockets.get(id);if(!session){session={agent:null,viewers:new Set()};rtcSockets.set(id,session);}return session;}
 // WebSocket authentication is checked before upgrade. Never pass agent tokens in URLs.
 httpServer.on('upgrade',async(req,socket,head)=>{
@@ -385,9 +432,17 @@ httpServer.on('upgrade',async(req,socket,head)=>{
   rtcWs.handleUpgrade(req,socket,head,ws=>rtcWs.emit('connection',ws,req,{id,role}));
  }catch(e){socket.destroy();}
 });
-rtcWs.on('connection',(ws,req,{id,role})=>{
+rtcWs.on('connection',async(ws,req,{id,role})=>{
+ let iceServers;
+ try{iceServers=await getRtcIceConfig();}
+ catch(e){
+  console.error('[WebRTC] TURN credentials unavailable:',e.message);
+  safeSend(ws,{type:'error',message:'TURN 凭据获取失败（详见 Render 日志）。网站和设备已连接不等于视频已连接。'});
+  ws.close(1011,'TURN temporarily unavailable');return;
+ }
+ if(ws.readyState!==WebSocket.OPEN)return;
  const session=rtcSession(id);
- safeSend(ws,{type:'config',iceServers:rtcIceConfig()});
+ safeSend(ws,{type:'config',iceServers});
  if(role==='agent'){
   if(session.agent&&session.agent!==ws)session.agent.close(1000,'新的手机共享会话');
   session.agent=ws;
