@@ -160,6 +160,55 @@ app.post('/api/devices/:id/control',mustAuth,mustOrigin,async(req,res)=>{
   return res.json({ok:true,queued:true});
  }catch(e){return failure(res,e,'发送操控指令失败');}
 });
+// Launch only apps that the consenting device itself reported as launcher-visible.
+app.post('/api/devices/:id/apps/launch',mustAuth,mustOrigin,async(req,res)=>{
+ const id=value(req.params.id,80),pkg=req.body?.package;
+ if(!SCREEN_ID.test(id)||typeof pkg!=='string'||!/^[-.a-zA-Z0-9_]{2,220}$/.test(pkg))return res.status(400).json({error:'设备或应用包名无效'});
+ if(!ready(res))return;
+ try{
+  const {data,error}=await managedDb.from('be_real_devices').select('id,last_seen').eq('id',id).is('revoked_at',null).maybeSingle();
+  if(error)throw error;
+  if(!data)return res.status(404).json({error:'设备不存在或授权已撤销'});
+  if(!data.last_seen||Date.now()-new Date(data.last_seen).getTime()>HEARTBEAT_MS)return res.status(409).json({error:'设备不在线'});
+  const inventory=appInventories.get(id);
+  if(!inventory||Date.now()-inventory.updatedAt>10*60*1000)return res.status(409).json({error:'应用清单已过期，请刷新并等待手机上报'});
+  if(!inventory.items.some(x=>x.package===pkg&&x.enabled))return res.status(403).json({error:'此应用未在设备的可启动清单中'});
+  const q=(controlQueues.get(id)||[]).filter(x=>Date.now()-x.time<CONTROL_TTL);
+  if(q.length>=15)return res.status(429).json({error:'指令过于频繁'});
+  q.push({time:Date.now(),command:{action:'launch_app',package:pkg}});controlQueues.set(id,q);
+  await audit('app_launch_requested',id,'管理员请求启动已上报的应用');
+  res.json({ok:true,queued:true});
+ }catch(e){failure(res,e,'应用启动请求失败')}
+});
+// Authorized application-management requests. Android keeps the final uninstall confirmation.
+app.post('/api/devices/:id/apps/:operation',mustAuth,mustOrigin,async(req,res)=>{
+ const id=value(req.params.id,80),op=req.params.operation,pkg=req.body?.package;
+ if(!['notify','request-uninstall'].includes(op))return res.status(404).json({error:'不支持的操作'});
+ if(!SCREEN_ID.test(id)||typeof pkg!=='string'||!/^[-.a-zA-Z0-9_]{2,220}$/.test(pkg))return res.status(400).json({error:'设备或包名无效'});
+ if(!ready(res))return;
+ try{
+  const {data,error}=await managedDb.from('be_real_devices').select('id,last_seen').eq('id',id).is('revoked_at',null).maybeSingle();
+  if(error)throw error;
+  if(!data)return res.status(404).json({error:'设备不存在或授权已撤销'});
+  if(!data.last_seen||Date.now()-new Date(data.last_seen).getTime()>HEARTBEAT_MS)return res.status(409).json({error:'设备离线'});
+  const inventory=appInventories.get(id);
+  if(!inventory||Date.now()-inventory.updatedAt>10*60*1000)return res.status(409).json({error:'应用清单已过期'});
+  const item=inventory.items.find(x=>x.package===pkg);
+  if(!item)return res.status(403).json({error:'此包名不在已上报的应用清单中'});
+  if(op==='request-uninstall'&&(item.system||pkg==='com.blackeagle.agent'))return res.status(403).json({error:'禁止卸载系统或管理客户端'});
+  const command={action:op==='notify'?'app_notification':'request_uninstall_app',package:pkg};
+  if(op==='notify'){
+   const message=req.body?.message;
+   if(typeof message!=='string'||!message.trim()||message.length>200)return res.status(400).json({error:'通知内容必须为1-200字'});
+   command.message=message.trim();command.position=req.body?.position==='middle'?'middle':'top';
+  }
+  const q=(controlQueues.get(id)||[]).filter(x=>Date.now()-x.time<CONTROL_TTL);
+  if(q.length>=15)return res.status(429).json({error:'指令过于频繁'});
+  q.push({time:Date.now(),command});controlQueues.set(id,q);
+  await audit(op==='notify'?'app_notification_requested':'app_uninstall_confirmation_requested',id,'管理员请求应用操作（设备端需按系统要求确认）');
+  res.json({ok:true,queued:true});
+ }catch(e){failure(res,e,'应用操作请求失败')}
+});
 app.get('/api/agent/control/next',async(req,res)=>{
  const id=await agentDevice(req,res);if(!id)return;
  const q=controlQueues.get(id)||[];
