@@ -114,7 +114,41 @@ function renderAppsRows(){
  const list=(appListData||[]).filter(x=>(x.name+' '+x.package).toLowerCase().includes(search));
  const size=Math.max(1,Number($('be-apps-size')?.value)||50),pages=Math.max(1,Math.ceil(list.length/size));appListPage=Math.min(Math.max(1,appListPage),pages);
  const shown=list.slice((appListPage-1)*size,appListPage*size);
- tbody.innerHTML=shown.map(x=>`<tr><td>${x.icon&&x.icon.startsWith('data:image/png;base64,')?'<img alt="" src="'+esc(x.icon)+'">':'<span class="be-app-default">▣</span>'}</td><td>${esc(x.name||x.package)}<small>${x.system?'系统应用':'用户应用'}${x.enabled?'':' · 已停用'}</small></td><td>${esc(x.package)}<small>${esc(x.version||'版本未上报')}</small></td><td><button type="button" disabled title="本阶段仅实现真实应用列表">启动</button><button type="button" disabled>禁用</button><button type="button" disabled>注入</button><button type="button" disabled>卸载</button><button type="button" disabled>通知</button></td></tr>`).join('')||'<tr><td colspan="4">'+(appListUpdated?'没有匹配的应用':'等待手机上传应用清单，首次通常需要约 40 秒')+'</td></tr>';
+ tbody.innerHTML=shown.map(x=>`<tr><td>${x.icon&&x.icon.startsWith('data:image/png;base64,')?'<img alt="" src="'+esc(x.icon)+'">':'<span class="be-app-default">▣</span>'}</td><td>${esc(x.name||x.package)}<small>${x.system?'系统应用':'用户应用'}${x.enabled?'':' · 已停用'}</small></td><td>${esc(x.package)}<small>${esc(x.version||'版本未上报')}</small></td><td><button type="button" data-app-action="launch" data-pkg="${esc(x.package)}" ${activeDevice.online?'':'disabled'}>启动</button><button type="button" data-app-action="disable" data-pkg="${esc(x.package)}">${x.enabled?'禁用':'开启'}</button><button type="button" data-app-action="account" data-pkg="${esc(x.package)}">注入</button><button type="button" data-app-action="uninstall" data-pkg="${esc(x.package)}" ${x.system?'disabled title="系统应用不能通过普通卸载流程删除"':''}>卸载</button><button type="button" data-app-action="notify" data-pkg="${esc(x.package)}">通知</button></td></tr>`).join('')||'<tr><td colspan="4">'+(appListUpdated?'没有匹配的应用':'等待手机上传应用清单，首次通常需要约 40 秒')+'</td></tr>';
+ tbody.querySelectorAll('[data-app-action]').forEach(btn=>btn.onclick=async()=>{
+   const action=btn.dataset.appAction,pkg=btn.dataset.pkg;
+   if(!activeDevice||!pkg)return;
+   const app=(appListData||[]).find(a=>a.package===pkg);if(!app)return;
+   const endpoint='/api/devices/'+encodeURIComponent(activeDevice.id)+'/apps/';
+   if(action==='account'){
+     const user=prompt('公司账号登记 — '+(app.name||pkg)+'\n输入账号标识（不收集登录密码）：');
+     if(user===null)return;
+     const clean=user.trim();if(!clean||clean.length>120)return toast('账号标识不能为空或超过120字');
+     const key='be-company-account:'+activeDevice.id+':'+pkg;
+     try{localStorage.setItem(key,JSON.stringify({account:clean,date:new Date().toISOString()}));toast('仅保存于当前浏览器的账号标识；未上传密码');}
+     catch(e){toast('浏览器无法保存：'+e.message)}
+     return;
+   }
+   if(action==='disable')return alert('禁用/开启需要 Android 企业设备所有者（Device Owner）权限。此手机当前没有确认具备该权限，不能静默切换。');
+   if(!activeDevice.online)return toast('设备当前离线');
+   let url='',payload={package:pkg};
+   if(action==='launch'){
+     if(!confirm('在 '+activeDevice.name+' 上启动 '+pkg+'？'))return;
+     url=endpoint+'launch';
+   }else if(action==='uninstall'){
+     if(!confirm('在设备上发起卸载 '+(app.name||pkg)+'？\nAndroid 系统会要求手机端确认，不能静默卸载。'))return;
+     url=endpoint+'request-uninstall';
+   }else if(action==='notify'){
+     const body=prompt('发送通知 — '+(app.name||pkg)+'\n请输入通知内容（不超过200字）：');
+     if(body===null)return;
+     if(!body.trim()||body.length>200)return toast('通知内容长度为1-200字');
+     const position=confirm('显示位置选择：\n确定 = 顶部系统通知\n取消 = 中间短暂提示')?'top':'middle';
+     url=endpoint+'notify';payload={package:pkg,message:body.trim(),position};
+   }else return;
+   btn.disabled=true;
+   try{await post(url,payload);toast(action==='launch'?'启动指令已排队':action==='notify'?'通知已排队，请在设备确认显示':'卸载确认已在设备端发起（不代表已卸载）');}
+   catch(e){toast('操作失败：'+e.message)}finally{btn.disabled=false}
+ });
  if($('be-apps-total'))$('be-apps-total').textContent=list.length+'/'+(appListData||[]).length;
  if($('be-apps-page'))$('be-apps-page').textContent=appListPage+'/'+pages;
  if($('be-apps-stamp'))$('be-apps-stamp').textContent=appListUpdated?'上报时间 '+showDate(appListUpdated):'等待设备上报';
